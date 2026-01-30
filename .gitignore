@@ -1,0 +1,6 @@
+.venv
+.env
+X.code-workspace
+__pycache__/
+.gitattributes
+.vscode/    
