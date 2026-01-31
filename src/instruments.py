@@ -6,7 +6,7 @@
 # libraries, libraries!
 import time
 
-start_time_portal = time.time
+start_time_portal = time.time()
 start_time = time.time()
 
 import pandas as pd
@@ -25,6 +25,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 # (2) assign the browser driver
 from selenium import webdriver
 
+from dotenv import load_dotenv  # to access environment variables from .env file
+
+load_dotenv()  # take environment variables from .env file
+
 driver = webdriver.Firefox()
 
 # (2a) assign an arbitrary wait time for element sto be clicked
@@ -36,8 +40,8 @@ driver.find_element(
     By.CSS_SELECTOR, 'img[src="/img/icons/icon-login.png"]'
 ).click()  # find user login icon and click it
 # wait.until(EC.presence_of_element_located((By.ID, 'img[src="/img/icons/icon-login.png"]'))).click()
-driver.find_element(By.CSS_SELECTOR, "#username").send_keys(p_al)
-driver.find_element(By.CSS_SELECTOR, "#password").send_keys(p_xe)
+driver.find_element(By.CSS_SELECTOR, "#username").send_keys(os.getenv("PORTAL_UN"))
+driver.find_element(By.CSS_SELECTOR, "#password").send_keys(os.getenv("PORTAL_PW"))
 driver.find_element(By.CSS_SELECTOR, "#submit").click()
 
 # (4) access the portal instrument maintenance page
