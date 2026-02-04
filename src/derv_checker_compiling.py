@@ -3,9 +3,9 @@
 
 # # Compile the Derivative Cover Check Sheets
 
-print("##############################################")
+print("\n\n##############################################")
 print("#      START 2/4 DERV_CHECKER_COMPILING      #")
-print("##############################################")
+print("##############################################\n\n")
 
 # Libraries, libraries!
 
@@ -812,6 +812,6 @@ print(
 derivative calculation files for {rptDate.strftime('%d %b %Y')}"
 )
 
-print("##############################################")
+print("\n\n##############################################")
 print("#       END 2/4 DERV_CHECKER_COMPILING       #")
-print("##############################################")
+print("##############################################\n\n")

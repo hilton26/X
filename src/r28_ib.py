@@ -2,9 +2,10 @@
 # coding: utf-8
 
 print("\n\n##########################")
-print("#    START reg28_ib.py    #")
+print("#     START r28_ib.py    #")
 print("##########################\n\n")
 
+from datetime import datetime
 import time
 import pandas as pd
 import os
@@ -20,7 +21,7 @@ from openpyxl.cell import (
     Cell,
 )  # https://stackoverflow.com/questions/42215933/apply-wrap-text-to-all-cells-using-openpyxl
 from tqdm import tqdm
-from utilities import timediff, item_row
+from utilities import timediff, item_row, prior_month_end
 from constants import (
     supercats,
     superhens,
@@ -29,33 +30,37 @@ from constants import (
     pthReports,
     pthTest,
     pth_r28_lmts,
+    pth_schib_tmpl,
 )
 
 
 # get report data
 def get_inputs():
     start_time = time.time()
-    global funds, date, syth, nl, fund_list
+    global funds, rptDate, syth, nl, fund_list
     # print('Getting the Schedule IB report inputs ...')
 
     # fund long name lookup
     nl = pd.read_excel(
         pthSttlmnt, sheet_name="Funds", index_col=None, header=0, usecols="A,B"
     ).dropna(subset=["Fund Code"])
-    funds = pd.read_excel(pthPy, sheet_name="r28_ib", usecols="A").dropna()
-    funds["Funds"] = funds["Funds"].apply(
-        str.upper
-    )  # https://sparkbyexamples.com/pandas/pandas-convert-column-to-uppercase/
-    fund_list = (",").join(funds["Funds"])
-    date = pd.read_excel(pthPy, sheet_name="r28_ib", usecols="C", nrows=1).iloc[0, 0]
-    syth = pd.read_excel(pthPy, sheet_name="r28_ib", usecols="D", nrows=1).iloc[
-        0, 0
-    ]  # indicator to show 'SYTH' or not
-    # fund           = funds.iloc[0,0]
+    # funds = pd.read_excel(pthPy, sheet_name="r28_ib", usecols="A").dropna()
+    funds = pd.read_excel(pthPy, sheet_name="arc", usecols="N").dropna()
+    funds.iloc[:, 0] = funds.iloc[:, 0].str.upper()  # capitalise fund codes
+    funds.columns = ["Funds"]  # rename column
+    fund_list = funds.iloc[:, 0].tolist()  # list of funds to be included in the report
+
+    df = pd.read_excel(
+        pthPy, sheet_name="arc", usecols="S", nrows=8
+    )  # date and MV/EE selection
+    k = df.iloc[1, 0]
+    rptDate = k if k == k else prior_month_end(datetime.today().date())
+
+    syth = df.iloc[7, 0]
 
     s = "s" if len(funds) != 1 else ""
     print(
-        f"Schedule IB report{s} as at {date.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n {fund_list}\n"
+        f"Schedule IB report{s} as at {rptDate.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n {(', ').join(fund_list)}\n"
     )
     # print('\n', f'{timediff(start_time, time.time())}: getting the Schedule IB report inputs with pd.read_excel() completed')
 
@@ -68,7 +73,7 @@ def r28_df():
 
     # dataframe the Reg 28 classifications report
     rgAll = pd.read_excel(
-        os.path.join(pthReports, f"{fund} Reg28 {date.strftime('%d%b%Y')}.xlsx")
+        os.path.join(pthReports, f"{fund} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx")
     )
 
     # remove cash contra / synthetic cash rows in-place
@@ -117,7 +122,7 @@ def r28_df():
     }
     r28 = r28.rename(columns=headings)
 
-    # print('\n', f'{fund} on {date.strftime("%A %d %b %Y")}: {syth} contra{"s" if syth > 1 else ""} removed, ',
+    # print('\n', f'{fund} on {rptDate.strftime("%A %d %b %Y")}: {syth} contra{"s" if syth > 1 else ""} removed, ',
     # f'{len(ctgs)} sub-categor{"y" if len(ctgs) == 1 else "ies"}:', '\n', (', ').join(ctgs), '\n')
 
     # print(f'{timediff(start_time, time.time())}: setting up dataframe of values for the schedule completed: ')
@@ -174,15 +179,15 @@ def open_wb():
         del wb["Tbl2"]  # delete unneccesary sheets from the template workbook
         del wb["CS1"]  # delete unneccesary sheets from the template workbook
     else:
-        wb = openpyxl.load_workbook(pth_r28_lmts)  # open the Reg Schedule IB template
-
+        wb = openpyxl.load_workbook(pth_schib_tmpl)  # open the Reg Schedule IB template
+        # pth_schib_tmpl = pthW + r"\!Reg28 SchIB.xlsm"
     sh = wb["SchIB"]  # assign the sheet to be worked on
-    sh.title = f"{fund} SchIB {date.strftime('%d%b%Y')}"  # set tab name of IB sheet
+    sh.title = f"{fund} SchIB {rptDate.strftime('%d%b%Y')}"  # set tab name of IB sheet
 
     # enter fund name and report date on IB sheet
     sh["A2"] = f"{nl[nl['Fund Code'] == fund].iat[0, 1]} ({fund})"  # fund long name
     sh["A4"] = (
-        f"Assets held in compliance with Regulation 28 as at {date.strftime('%d %B %Y')}"
+        f"Assets held in compliance with Regulation 28 as at {rptDate.strftime('%d %B %Y')}"
     )
 
     # add cell styles to be applied in the workbook
@@ -544,9 +549,9 @@ def delete_columns():
 # function to save the file
 def save():
     start_time = time.time()
-    # print(f'Saving {fund} Reg28 SchIB {date.strftime("%d%b%Y")}.xlsx in {pthTest} ...')
+    # print(f'Saving {fund} Reg28 SchIB {rptDate.strftime("%d%b%Y")}.xlsx in {pthTest} ...')
     wb.save(
-        os.path.join(pthTest, f"{fund} Reg28 SchIB {date.strftime('%d%b%Y')}.xlsx")
+        os.path.join(pthTest, f"{fund} Reg28 SchIB {rptDate.strftime('%d%b%Y')}.xlsx")
     )  # save the completed Schedule IB in the Test folder
     wb.close
 
@@ -555,13 +560,13 @@ def save():
 # https://saturncloud.io/blog/how-to-append-existing-excel-sheet-with-new-dataframe-using-python-pandas/
 def append_classifications_sheet():
     start_time = time.time()
-    file_name = f"{fund} Reg28 SchIB {date.strftime('%d%b%Y')}.xlsx"
+    file_name = f"{fund} Reg28 SchIB {rptDate.strftime('%d%b%Y')}.xlsx"
     file_save = os.path.join(pthTest, file_name)
     book = openpyxl.load_workbook(file_save)
 
     with pd.ExcelWriter(file_save, engine="openpyxl", mode="a") as writer:
         rgAll.to_excel(
-            writer, sheet_name=f"{fund} Reg28 {date.strftime('%d%b%Y')}", index=False
+            writer, sheet_name=f"{fund} Reg28 {rptDate.strftime('%d%b%Y')}", index=False
         )
 
     # print(timediff(time.time(), start_time), 'to append the classifications sheet')
@@ -579,7 +584,7 @@ doneReg28 = []
 noReg28 = []
 for fund in tqdm(funds["Funds"]):
     if os.path.isfile(
-        os.path.join(pthReports, f"{fund} Reg28 {date.strftime('%d%b%Y')}.xlsx")
+        os.path.join(pthReports, f"{fund} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx")
     ):
         # print(fund)                     # test
         r28_df()  # create a dataframe, for what follows, from the Reg 28 categorisations sheet
@@ -601,19 +606,19 @@ for fund in tqdm(funds["Funds"]):
             fund
         )  # keep track of funds which did not have a classifcation sheet to work from
 
-    # print(f'Schedule IBs for {date.strftime("%d %b %Y")} done: {len(doneReg28)} - {(", ").join(doneReg28)}', '\n\n', \
+    # print(f'Schedule IBs for {rptDate.strftime("%d %b %Y")} done: {len(doneReg28)} - {(", ").join(doneReg28)}', '\n\n', \
     # f'Fund{"" if len(noReg28) == 1 else "s"} without a Reg 28 sheet: {len(noReg28)} - {(", ").join(noReg28)}')
 
 # open the test folder where the reports are stored
 # os.startfile(r'P:\Working Folders\Hilton\W\Reg_Tests')
 # print('Opening the saved schedule')
-# open_xl_file(os.path.join(pthTest,f'{fund} Reg28 SchIB {date.strftime("%d%b%Y")}.xlsx'))
+# open_xl_file(os.path.join(pthTest,f'{fund} Reg28 SchIB {rptDate.strftime("%d%b%Y")}.xlsx'))
 os.startfile(pthReports)
 os.startfile(pthTest)
 
 print(
     f"Fund{'' if len(noReg28) == 1 else 's'} without a \
-Reg 28 sheet for {date.strftime('%d %b %Y')} ({len(noReg28)}):\n",
+Reg 28 sheet for {rptDate.strftime('%d %b %Y')} ({len(noReg28)}):\n",
     (", ").join(noReg28),
 )
 print(
@@ -622,6 +627,6 @@ time for {len(funds) - len(noReg28)} \
 fund{'' if len(funds) - len(noReg28) == 1 else 's'}"
 )
 
-print("#########################")
-print("#      END reg28ib      #")
-print("#########################")
+print("\n\n##########################")
+print("#      END r28_ib.py     #")
+print("##########################\n\n")

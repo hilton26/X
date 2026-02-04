@@ -7,13 +7,6 @@
 # libraries, libraries!
 from pathlib import Path
 import os
-from dotenv import load_dotenv  # to access environment variables from .env file
-
-load_dotenv()  # take environment variables from .env file
-
-# cave
-p_al = os.getenv("PORTAL_UN")
-p_xe = os.getenv("PORTAL_PW")
 
 # scripts folder
 X = r"C:\Users\hilton.netta\OneDrive - Prescient\py\X"
@@ -74,7 +67,8 @@ msci_zips = pthCmp + r"\Reporting Requirements\PIM PPSBAL\Zips"
 pthPy = pthCmp + r"\Daily\py_reports.xlsm"
 pth_r28_lmts = pthW + r"\!Reg28Templates.xlsx"
 pth_tbl2_tmpl = pthW + r"\!Reg28_Tbl2.xlsx"
-pth_schib_tmpl = pthW + r"\!Reg28 SchIB.xlsm"
+pth_schib_tmpl = pthW + r"\!Reg28_SchIB.xlsx"
+pth_tbl2_static = pthW + r"\!Reg28 SchIB.xlsm"  # for r28_t2.py
 pthCLNs = pthCmp + r"\MCaps\CLNs.xlsx"
 pth_me17 = pthCmp + r"\Reporting Requirements\Monthly Reports\MonthEnd17.xlsm"
 frcv_file = pthCmp + r"\Daily\Free Cover.xlsm"

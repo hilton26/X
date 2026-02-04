@@ -5,55 +5,58 @@
 #
 # ### To generate multiple Reg 28 Table 2 reports
 
-print("##############################################")
-print("#              START r28_tbl2                #")
-print("##############################################")
+print("\n\n##############################################")
+print("#              START r28_t2.py               #")
+print("##############################################\n\n")
 
 # libraries, libraries!
-
 import time
 
-start_time_r28_tbl2_bulk = time.time()
+start_time0 = time.time()
 start_time = time.time()
-print("Importing libraries ...")
+print(f"Importing libraries ...")
 
 import pandas as pd
 import numpy as np
 import openpyxl, os, math
-from tqdm import tqdm
+from datetime import datetime
+from tqdm import tqdm, notebook
 from constants import (
     pthPy,
-    pthReports,
-    pthTest,
+    pthSttlmnt,
     pth_schib_tmpl,
     pth_tbl2_tmpl,
-    pthSttlmnt,
+    pth_tbl2_static,
+    pthReports,
+    pthTest,
 )
-from utilities import prior_month_end, timediff, item_row, open_xl_file
+from utilities import timediff, item_row, prior_month_end
+import subprocess
 
-print(f"{timediff(start_time, time.time())} importing libraries completed \n")
+print(f" {timediff(start_time, time.time())} importing libraries completed \n")
 
 # get report variables
 start_time = time.time()
 print(f"Getting report variables ...")
 
 # Table 1 to Table 2 category translation
-t1t2 = pd.read_excel(
-    pth_schib_tmpl, sheet_name="Static", index_col=None, header=0, usecols="A,E"
-).dropna(subset=["Table 2"])
+t1t2 = pd.read_excel(pth_tbl2_static, sheet_name="Static", usecols="A,E").dropna(
+    subset=["Table 2"]
+)
 
-# get report date and fund names from the py_report.xlsm sheet
-import xlwings as xw
+# get report fund codes from the py_report.xlsm 'arc' sheet
+df_funds = pd.read_excel(pthPy, sheet_name="arc", usecols="N").dropna()  # funds
+df_funds.iloc[:, 0] = df_funds.iloc[:, 0].str.upper()  # capitalise fund codes
+df_funds.columns = ["Fund"]  # rename column
+print(df_funds)
 
-wb = xw.Book(pthPy)  # open calc workbook as an object
-k = wb.sheets["r28_tbl2"].range("F2").value
-rptDate = (
-    prior_month_end() if k is None else k
-)  # prior working ay or report date override; has type datetime.datetime()
-rpt_Type = wb.sheets["r28_tbl2"].range("D2").value
-wb.close()
+# get report date
+df = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows=2)
+k = df.iloc[1, 0]  # report date
+rptDate = k if k == k else prior_month_end(datetime.today().date())
+# print(rptDate, k)
 
-# get list of completed Reg28 files in the reporting folder
+# get list of completed Reg28 classification files in the reporting folder
 r28_files = [
     f
     for f in os.listdir(pthReports)
@@ -63,30 +66,26 @@ lst_r28 = [file[: file.find(" ")] for file in r28_files]
 df_r28 = pd.DataFrame(lst_r28, columns=["Fund R28"])
 files_r28 = ", ".join([file[: file.find(" ")] for file in r28_files])
 print(
-    f"{len(r28_files)} Reg28 files for {rptDate.strftime('%d%b%Y')} in the reporting folder",
+    f"{len(r28_files)} Reg28 files for {rptDate.strftime('%d %b %Y')} in the reporting folder",
     "\n",
 )
 
-# fund long name lookup dataframe
-names = pd.read_excel(
-    pthSttlmnt, sheet_name="Funds", index_col=None, header=0, usecols="A,B"
-).dropna(subset=["Fund Code"])  # fund long name lookup
-
-# create fund long name lookup table
-df_funds = pd.read_excel(
-    pthPy, sheet_name="r28_tbl2", usecols="A", header=0
-).dropna()  # dataframe with a single column, 'Fund', for a several funds
+# fund long name lookup
+names = pd.read_excel(pthSttlmnt, sheet_name="Funds", usecols="A,B").dropna(
+    subset=["Fund Code"]
+)
 mrg_w_rpt = df_funds.merge(names, left_on="Fund", right_on="Fund Code", how="left")
 have_names = mrg_w_rpt.dropna(subset=["Fund Code"])
 print(
-    f"Funds without corresponding long names ({len(mrg_w_rpt[mrg_w_rpt['Fund Code'].isnull()])}): \
+    f"{len(mrg_w_rpt[mrg_w_rpt['Fund Code'].isnull()])} funds without corresponding long names: \
       {', '.join(mrg_w_rpt[mrg_w_rpt['Fund Code'].isnull()]['Fund'])}",
     "\n",
 )
 
+# identify fuund in the Table 2 list without completed Reg 28 reports
 mrg_w_r28 = have_names.merge(df_r28, left_on="Fund", right_on="Fund R28", how="left")
 print(
-    f"Funds without a completed Reg28 file ({len(mrg_w_r28[mrg_w_r28['Fund R28'].isnull()])}): \
+    f"{len(mrg_w_r28[mrg_w_r28['Fund R28'].isnull()])} funds without a completed Reg28 file: \
       {', '.join(mrg_w_r28[mrg_w_r28['Fund R28'].isnull()]['Fund'])}",
     "\n",
 )
@@ -94,14 +93,14 @@ print(
 nl = mrg_w_r28.dropna(subset=["Fund R28"])
 
 # get fund names
-funds = pd.read_excel(pthPy, sheet_name="r28_tbl2", usecols="A", header=0).dropna()[
-    "Fund"
-]
+funds = df_funds.iloc[:, 0].values.tolist()
+funds
 s = "" if len(funds) == 1 else "s"
+print(f" Report date: {rptDate.strftime('%d %b %Y')}")
 print(
-    f" Report date: {rptDate.strftime('%d%b%Y')} {rpt_Type}",
-    "\n",
-    f"Fund{s} ({len(nl)}, i.e., {len(funds)} in reporting list less {len(mrg_w_rpt[mrg_w_rpt['Fund Code'].isnull()])} unnamed less {len(mrg_w_r28[mrg_w_r28['Fund R28'].isnull()])} without Reg 28 sheets): {', '.join(nl['Fund'].values.tolist())}",
+    f" Fund{s} ({len(nl)}, i.e., {len(funds)} in reporting list less \
+{len(mrg_w_rpt[mrg_w_rpt['Fund Code'].isnull()])} unnamed less {len(mrg_w_r28[mrg_w_r28['Fund R28'].isnull()])} \
+without Reg 28 sheets): {', '.join(nl['Fund'].values.tolist())}",
     "\n",
 )
 
@@ -109,7 +108,7 @@ print(f"{timediff(start_time, time.time())} getting report variables completed \
 
 # the loop
 start_time_loop = time.time()
-print(f"Looping over {len(nl)} fund{s} ...")
+print(f"Preparing Reg 28 Table 2 report for {len(nl)} fund{s} ...")
 
 # get Table 2 categories
 z = pd.read_excel(
@@ -128,9 +127,7 @@ for fund in tqdm(nl["Fund"]):
 
     # get Table 2 items
     shtr = pd.read_excel(
-        os.path.join(
-            pthReports, f"{fund} {rpt_Type} {rptDate.strftime('%d%b%Y')}.xlsx"
-        ),
+        os.path.join(pthReports, f"{fund} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
         index_col=None,
         header=0,
         usecols="A:K",
@@ -403,10 +400,6 @@ print(
     f"{len(nl['Fund'])} Reg 28 Table 2 reports for {rptDate.strftime('%d%b%Y')} completed and stored here P:\Working Folders\Hilton\W\Reg_Tests"
 )
 
-print(
-    f"\n{start_time_r28_tbl2_bulk, time.time()} roundtrip time to complete the Reg 28 Table 2 report for {len(funds)} funds"
-)
-
-print("##############################################")
-print("#                END r28_tbl2                #")
-print("##############################################")
+print("\n\n##############################################")
+print("#               END r28_t2.py                #")
+print("##############################################\n\n")

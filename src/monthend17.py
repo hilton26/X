@@ -7,13 +7,10 @@
 #
 # issuers_2 and issuers_3 files for the reporting month suffixed with _ddMmmyyyy.xlsx
 
-print("##########################")
-print("#    START monthend17    #")
-print("##########################")
+print("\n\n##########################")
+print("#   START monthend17.py  #")
+print("##########################\n\n")
 
-print(
-    "\n =========================== \n STARTING monthend17.ipynb \n==========================="
-)
 import time
 
 start_time_me17 = time.time()
@@ -36,29 +33,29 @@ from constants import (
 )
 from utilities import timediff, prior_month_end
 
-
-# dataframe the issuers_2_ddMMMyyyy.xlsx and issuers_3_ddMMMyyyy.xlsx sheets
+# dataframe the issuers_2_ and issuers_3_ sheets
 start_time = time.time()
-print("Dataframing the issuers_2_ddMMMyyyy.xlsx and issuers_3_ddMMMyyyy.xlsx sheets")
 
-df = pd.read_excel(pth_me17, sheet_name="Process", usecols="C", nrows=1)
-k = df.iloc[0, 0]
+# df = pd.read_excel(pth_me17, sheet_name="Process", usecols="C", nrows=1)
+df = pd.read_excel(pthPy, sheet_name="arc", usecols="AG", nrows=2)
+k = df.iloc[1, 0]
 rptDate = (
-    k if isinstance(k, datetime) else prior_month_end().date()
+    k if k == k else prior_month_end().date()
 )  # prior month-end or report date override; has type datetime.datetime()
 print(
-    f" {rptDate.strftime('%A %d %b %Y')} reporting date from reporting file MonthEnd17.xlsm"
+    f" {rptDate.strftime('%A %d %b %Y')} \
+for reporting MonthEnd17.xlsm"
 )
 
 # update reporting date in MonthEnd17.xlsm
-import xlwings as xw
+# import xlwings as xw
 
-wb_py = xw.Book(pth_me17)  # visible=False runs Excel in the background
-visible = False
-ws = wb_py.sheets("Process")
-ws.range("C2").value = rptDate
-wb_py.save()
-wb_py.close()
+# wb_py = xw.Book(pth_me17)  # visible=False runs Excel in the background
+# visible = False
+# ws = wb_py.sheets("Process")
+# ws.range("C2").value = rptDate
+# wb_py.save()
+# wb_py.close()
 
 # get the 'all' sheets from issuers_2,xlsx and issuers_3.xlsx and merge them
 # https://stackoverflow.com/questions/17977540/pandas-looking-up-the-list-of-sheets-in-an-excel-file
@@ -328,7 +325,7 @@ print(
 )
 
 # get list of month-end 17 portfolio codes
-res = pd.read_excel(pthPy, sheet_name="funds", usecols=["Month-end 17"]).dropna()
+res = pd.read_excel(pthPy, sheet_name="arc", usecols="AF").dropna()
 me17_list = [s + "_EXP" for s in res["Month-end 17"]]
 print(f"{len(me17_list)} funds: \n   {(', ').join(me17_list)}")
 
@@ -337,6 +334,8 @@ print(f"{len(me17_list)} funds: \n   {(', ').join(me17_list)}")
 start_time = time.time()
 print("Creating and then saving individual look-through holdings report workbooks ...")
 
+# open xlwings to write the reports
+import xlwings as xw
 
 # for fund in tqdm(funds['PortfolioCode'].unique()):
 for fund in tqdm(me17_list):
@@ -397,6 +396,6 @@ print(
     "\n =========================== \n FINISHED monthend17.ipynb \n==========================="
 )
 
-print("##########################")
-print("#     END monthend17     #")
-print("##########################")
+print("\n\n##########################")
+print("#    END monthend17.py   #")
+print("##########################\n\n")

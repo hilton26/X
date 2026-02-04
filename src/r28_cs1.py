@@ -3,9 +3,9 @@
 
 # # Prepare CS1 Reports From PARN Download to Report Saving
 
-print("#######################")
+print("\n\n#######################")
 print("#   START r28_cs1.py  #")
-print("#######################")
+print("#######################\n\n")
 
 import time
 
@@ -30,29 +30,23 @@ from utilities import (
 )
 import subprocess
 
-# set paths to the driver, urls, and report parameters
-
-# from selenium import webdriver
-# from selenium.webdriver.common.by import By
-# from selenium.common.exceptions import NoSuchElementException, TimeoutException, UnexpectedAlertPresentException
-
-print(
-    f" {timediff(start_time, time.time())} importing libraries and setting up paths\n"
-)
-
 # get inputs to pass to Eagle
 start_time = time.time()
 print("Collecting input data ...")
 
-# get fund codes from r28_cs1 tab of the py_report.xlsm sheet
-df = pd.read_excel(pthPy, sheet_name="r28_cs1", usecols="A,F").dropna(subset=["Fund"])
-funds = df["Fund"].apply(str.upper)
+# get report fund codes from the py_report.xlsm 'arc' sheet
+funds = pd.read_excel(pthPy, sheet_name="arc", usecols="N").dropna()  # funds
+funds.iloc[:, 0] = funds.iloc[:, 0].str.upper()  # capitalise fund codes
+funds.columns = ["Fund"]  # rename column
+print(funds)
 
 # get report date
-k = df.iloc[0, 1]
+df = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows = 9)
+k = df.iloc[1, 0]
 rptDate = (
-    k if isinstance(k, datetime) else prior_month_end(datetime.today())
+    k if k ==k else prior_month_end(datetime.today().date())
 )  # prior month end or report date override; type is datetime()
+print(rptDate, k)
 
 # check inputs
 s = "" if len(funds) == 1 else "s"
@@ -309,6 +303,6 @@ print(
     f"{timediff(start_time_r28_cs1, time.time())} roundtripping download, merge and Reg 28 CS1 reports \n",
 )
 
-print("#####################")
-print("#   END r28_c1.py   #")
-print("#####################")
+print("\n\n#######################")
+print("#    END r28_cs1.py   #")
+print("#######################\n\n")
