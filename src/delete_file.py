@@ -33,7 +33,7 @@ except FileNotFoundError:
 except Exception as e:
     print(f"An error occurred: {e}")
 
-# if the Free Cover file was deleted ...
+# if the Free Cover file was deleted, replace with a new one
 if df.iloc[0, 0] == "Derv":
     source = pthDaily + r"\Free Cover_SPARE.xlsm"
     destination = pthDaily + r"\Free Cover.xlsm"
