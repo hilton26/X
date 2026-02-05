@@ -3,9 +3,9 @@
 
 # # Prepare the Derivative Free Cover Sheet
 
-print("##############################################")
-print("#      START 4/4 DERV_CHECKER_FREECOVER      #")
-print("##############################################")
+print("\n\n##############################################")
+print("#     START 4/4 derv_checker_freecover.py     #")
+print("##############################################\n\n")
 
 # Import libraries
 
@@ -21,7 +21,7 @@ import pandas as pd
 import numpy as np
 import xlwings as xw
 import os
-from constants import pthPy, frcv_file, dervcoverthreshold, pthEXPORTS, pthSttlmnt
+from constants import pthPy, frcv_file, pthEXPORTS, pthSttlmnt
 from utilities import timediff, prior_working_day
 
 # create a lookup table for fund UT status and investment team
@@ -29,7 +29,7 @@ twoA = pd.read_excel(pthSttlmnt, sheet_name="Funds", usecols="A:B")
 
 print(
     f"{timediff(start_time, time.time())} importing libraries\
-        and setting up paths for the free cover report\n"
+and setting up paths for the free cover report\n"
 )
 
 # Get report date and selected summary sheet option
@@ -37,16 +37,17 @@ print(
 start_time = time.time()
 print(
     "Getting the reporting date and the comparative \
-    prior reporting date ..."
+prior reporting date ..."
 )
 
 # extract override report date from cell "E1" in dervs sheet of py_reports.xlsm
-df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="E", nrows=3)
+df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="E", nrows=5)
 k = df.iloc[2, 0]
 rptDate = (
     k.date() if isinstance(k, datetime) else prior_working_day(datetime.today())
 )  # prior working day or report date override; of type datetime.datetime()
 prrDate = prior_working_day(rptDate)
+dervcoverthreshold = df.iloc[4, 0]
 
 print(
     f"\n {rptDate.strftime('%a %d %b %Y')} current \
@@ -70,7 +71,7 @@ pr_fln = os.path.join(
 )
 cu_fln = os.path.join(pthEXPORTS, f"Derv {rptDate.strftime('%d%b%Y')}.xlsx")
 
-print(f"\n  {pr_fln}\n  {cu_fln}\n")
+print(f"\n  {pr_fln}\n  {cu_fln}\n {dervcoverthreshold}\n")
 
 prior_day = pd.read_excel(
     pr_fln, sheet_name="Summary", usecols=[0, 1, 2, 3]

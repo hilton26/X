@@ -3,9 +3,9 @@
 
 # ### Deletes a file given its path
 
-import os
+import os, shutil
 import pandas as pd
-from constants import pthPy, pthHdg, frcv_file
+from constants import pthPy, pthHdg, frcv_file, pthDaily
 
 df = pd.read_excel(pthPy, sheet_name="arc", usecols="AW", nrows=9)
 
@@ -32,3 +32,9 @@ except FileNotFoundError:
     print(f"File '{target}' not found.")
 except Exception as e:
     print(f"An error occurred: {e}")
+
+# if the Free Cover file was deleted ...
+if df.iloc[0, 0] == "Derv":
+    source = pthDaily + r"\Free Cover_SPARE.xlsm"
+    destination = pthDaily + r"\Free Cover.xlsm"
+    shutil.copyfile(source, destination)
