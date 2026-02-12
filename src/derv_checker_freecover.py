@@ -4,7 +4,7 @@
 # # Prepare the Derivative Free Cover Sheet
 
 print("\n\n##############################################")
-print("#     START 4/4 derv_checker_freecover.py     #")
+print("#     START 4/4 derv_checker_freecover.py    #")
 print("##############################################\n\n")
 
 # Import libraries
@@ -47,23 +47,24 @@ rptDate = (
     k.date() if isinstance(k, datetime) else prior_working_day(datetime.today())
 )  # prior working day or report date override; of type datetime.datetime()
 prrDate = prior_working_day(rptDate)
-dervcoverthreshold = df.iloc[4, 0]
+dervthreshold = df.iloc[4, 0] * 100
 
 print(
     f"\n {rptDate.strftime('%a %d %b %Y')} current \
-        report date\n {prrDate.strftime('%a %d %b %Y')} \
-            prior report date\n"
+report date\n {prrDate.strftime('%a %d %b %Y')} prior \
+report date \n {dervthreshold:.1f}% threshold\n"
 )
+
 print(
     f"{timediff(start_time, time.time())} getting the \
-        reporting date and the comparative prior reporting date"
+reporting date and the comparative prior reporting date"
 )
 
 # dataframe the current and prior working day derivative summary files
 start_time = time.time()
 print(
     "Dataframing current and prior working day \
-    derivative summary files ..."
+derivative summary files ..."
 )
 
 pr_fln = os.path.join(
@@ -71,7 +72,7 @@ pr_fln = os.path.join(
 )
 cu_fln = os.path.join(pthEXPORTS, f"Derv {rptDate.strftime('%d%b%Y')}.xlsx")
 
-print(f"\n  {pr_fln}\n  {cu_fln}\n {dervcoverthreshold}\n")
+print(f"\n  {pr_fln}\n  {cu_fln}\n {dervthreshold}\n")
 
 prior_day = pd.read_excel(
     pr_fln, sheet_name="Summary", usecols=[0, 1, 2, 3]
@@ -122,8 +123,8 @@ fc = fc.iloc[:, [0, 4, 3, 5, 1, 2]]
 # convert numbers to float type
 fc[fc.columns[2:4]] = fc[fc.columns[2:4]].astype(float)
 
-# identify funds below the dervcoverthreshold
-fc = fc[(fc[fc.columns[2]] < dervcoverthreshold) & (fc["UT"] == "UT") & (fc["#"] != 0)]
+# identify funds below the dervthreshold
+fc = fc[(fc[fc.columns[2]] < dervthreshold) & (fc["UT"] == "UT") & (fc["#"] != 0)]
 
 # drop 'UT' and '#' columns
 fc.drop(axis=1, columns=["UT", "#"], inplace=True)  # 4 columns
@@ -180,6 +181,6 @@ print(
         time for free cover file"
 )
 
-print("##############################################")
-print("#       END 4/4 DERV_CHECKER_FREECOVER       #")
-print("##############################################")
+print("\n\n##############################################")
+print("#      END 4/4 derv_checker_freecover.py     #")
+print("##############################################\n\n")

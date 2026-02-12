@@ -13,13 +13,13 @@ start_time = time.time()
 start_time_r28_cs1 = start_time
 
 # libraries, libraries!
-print("Importing libraries and setting up paths ...")
+print("Importing libraries ...")
 from datetime import datetime
 import pandas as pd
 import os
 from pathlib import Path
 from tqdm import tqdm, notebook
-from constants import pthPy, pthTest, pth_dl
+from constants import pthPy, pthTest, pth_dl, cs1_reporting
 from utilities import (
     timediff,
     last_working_day,
@@ -30,36 +30,43 @@ from utilities import (
 )
 import subprocess
 
-# get inputs to pass to Eagle
+# get inputs to pass to osprey()
 start_time = time.time()
 print("Collecting input data ...")
 
 # get report fund codes from the py_report.xlsm 'arc' sheet
 funds = pd.read_excel(pthPy, sheet_name="arc", usecols="N").dropna()  # funds
-funds.iloc[:, 0] = funds.iloc[:, 0].str.upper()  # capitalise fund codes
-funds.columns = ["Fund"]  # rename column
-print(funds)
+# funds.iloc[:, 0] = funds.iloc[:, 0].str.upper()  # capitalise fund codes
+funds.columns = ["Funds"]  # rename column
+funds = funds["Funds"].apply(
+    str.upper
+)  # capitalise fund codes, also converts dataframe to a series
+print(funds, type(funds))
 
 # get report date
-df = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows = 9)
+df = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows=9)
 k = df.iloc[1, 0]
-rptDate = (
-    k if k ==k else prior_month_end(datetime.today().date())
-)  # prior month end or report date override; type is datetime()
+rptDate = k.date() if k == k else prior_month_end(datetime.today()).date()
+# prior month end or report date override; type is datetime()
 print(rptDate, k)
 
 # check inputs
 s = "" if len(funds) == 1 else "s"
 print(
-    f"{len(funds)} PARN CS1 fund report{s} as at {rptDate.strftime('%A %d %b %Y')} to be downloaded:\n  {(', ').join(funds)}"
+    f"{len(funds)} PARN CS1 fund report{s} as at \
+{rptDate.strftime('%A %d %b %Y')} to be \
+downloaded:\n  {(',').join(funds)}"
 )
-print(f"\n{timediff(start_time, time.time())} collecting input data\n")
+print(f"\n {timediff(start_time, time.time())} collecting input data\n")
 
 # download the PARN reports in batches
 start_time = time.time()
 num_batches = 2 if len(funds) != 1 else 1
+es = "es" if num_batches != 1 else ""
 print(
-    f"Downloading the {len(funds)} fund holdings for {rptDate.strftime('%a %d %b %Y')} in {num_batches} batches ..."
+    f"\nDownloading the {len(funds)} fund holdings \
+for {rptDate.strftime('%a %d %b %Y')} in {num_batches} \
+batch{es} ..."
 )
 
 batch_size = int(len(funds) / num_batches)
@@ -68,18 +75,24 @@ batch_filepaths = []
 for index, batch in tqdm(enumerate(batches, start=1)):
     fln = f"{index}_of_{len(batches)}_CS1"
     filename = f"PARN {fln}({len(batch)}) {rptDate.strftime('%#d%b%Y')}.csv"
-    print(f"Get {filename}, a batch of {len(batch)} files:\n   {(', ').join(batch)}")
+    print(
+        f"\nGet {filename}, a batch of {len(batch)} files:\n   {(', ').join(batch)}\n"
+    )
     batch_filepath = os.path.join(pth_dl, filename)
     batch_filepaths.append(batch_filepath)
     if os.path.isfile(batch_filepath):
         print(f"\n{batch_filepath} exists\n")
         pass
     else:
-        print(f"Downloading batch {index} of {len(batches)} as {batch_filepath}...\n")
+        print(
+            f"\n Downloading batch {index} of {len(batches)} as {batch_filepath}...\n"
+        )
         osprey("parn", (",").join(batch), rptDate, rptDate, fln, "csv")
 
 print(
-    f"\n{timediff(start_time, time.time())} downloading the {len(funds)} fund holdings for {rptDate.strftime('%a %d %b %Y')} in {num_batches} batches"
+    f"{timediff(start_time, time.time())} downloading \
+the {len(funds)} fund holdings for \
+{rptDate.strftime('%a %d %b %Y')} in {num_batches} batches\n"
 )
 
 # join the downloaded holding reports into a dataframe
@@ -122,10 +135,14 @@ print(
     f"\n{timediff(start_time, time.time())} dataframing the fund holding reports for CS1 reporting\n"
 )
 
-# get the fund NAVs
+# get the fund NAVs with osprey()
 start_time = time.time()
+s = "s" if len(funds) != 1 else ""
+d = "s'" if len(funds) != 1 else "'s"
 print(
-    f"Getting the {len(funds)} CS1 funds' NAVs as at {rptDate.strftime('%A %d %B %Y')} with osprey() ..."
+    f"\nGetting the {len(funds)} CS1 fund{d} \
+NAV{s} as at {rptDate.strftime('%A %d %B %Y')} \
+with osprey() ..."
 )
 
 name = "CS1"
@@ -135,27 +152,32 @@ navs_fln = os.path.join(
 
 if os.path.exists(navs_fln):
     print(
-        f" CS1 fund NAVs as at {rptDate.strftime('%a %d %b %Y')} already downloaded: {navs_fln}"
+        f"\n CS1 fund NAVs as at {rptDate.strftime('%a %d %b %Y')} exists:\n  {navs_fln}\n"
     )
     pass
 else:
     osprey("fnav", (",").join(funds), rptDate, rptDate, name, "csv")
 
+print(
+    f" {timediff(start_time, time.time())} getting \
+the {len(funds)} fund{d} NAV{s} \
+as at {rptDate.strftime('%A %d %B %Y')} \
+with osprey()\n"
+)
+
 # dataframe the downloaded fund NAVs
+start_time = time.time()
+print(f"\nDataframing the fund NAV{s} ...")
+
+# dataframe the NAVs
 navs = pd.read_csv(navs_fln)
 
-# convert the Total column from object to float
+# convert totals column from type object to type float
 navs["Total Net Assets"] = (
     navs["Total Net Assets"].str.replace(",", "").astype("float64")
 )
-# navs['Total Net Assets'] = navs['Total Net Assets'].apply(lambda x: f"{x:,.2f}") # present with thousands separator and to two decimals
 
-print("\n", navs_fln)
-
-print(
-    f" {timediff(start_time, time.time())} getting the {len(funds)} funds' NAV{'s' if len(funds) != 1 else ''} as at {rptDate.strftime('%A %d %B %Y')} \
-with osprey()"
-)
+print(f"\n {timediff(start_time, time.time())} dataframing the fund NAV{s} ...\n")
 
 # merge the CS1 fund holdings and NAVs, and compare their totals
 start_time = time.time()
@@ -216,7 +238,7 @@ CS1 fund holdings and NAVs as at {rptDate.strftime('%A %d %B %Y')}"
 # convert the PARN holdings into Reg 28 format with correspodning headings
 start_time = time.time()
 print(
-    f"Converting the CS1 fund PARN holdings in readiness for Reg 28 classification ..."
+    f"\nConverting the CS1 fund PARN holdings in readiness for Reg 28 classification ..."
 )
 
 s = "" if len(funds) == 1 else "s"
@@ -257,12 +279,12 @@ hReg28.reset_index(drop=True, inplace=True)
 # hReg28.info()
 
 print(
-    f" {timediff(start_time, time.time())} converting the CS1 fund PARN holdings in readiness for Reg 28 classification"
+    f" {timediff(start_time, time.time())} converting the CS1 fund PARN holdings in readiness for Reg 28 classification\n"
 )
 
 # write the CS1 holdings dataframe to review it as a worksheet
 start_time = time.time()
-print("Writing the CS1 fund holdings dataframe and navs dataframe to a sheet ...")
+print("\nWriting the CS1 fund holdings dataframe and navs dataframe to a sheet ...")
 
 writer = pd.ExcelWriter(cs1_fname, engine="xlsxwriter")  # instantiate a sheet writer
 hReg28.to_excel(writer, index=False, sheet_name="All")  # write the NAV sheet
@@ -275,34 +297,37 @@ print(
     f" {timediff(start_time, time.time())} writing the CS1 fund holdings dataframe and navs dataframe to a sheet\n"
 )
 
-# run the CS1 reporting script
+# run the CS1 Reg 28 classification script
 start_time = time.time()
-print(f"Classifying the holdings for the CS1 reports\n")
+print(f"\nClassifying the no-lookthrough holdings for the CS1 reports ...")
 
 r_classifier(
     "cs1",
     cs1_fname,
-)
+)  # classification script
 
 print(
-    f" \n{timediff(start_time, time.time())} classifying the holdings for the CS1 reports\n"
+    f" {timediff(start_time, time.time())} classifying \
+the no-lookthrough holdings for the CS1 reports\n"
 )
 
 # run the CS1 reporting script
 start_time = time.time()
-print(f"Generating the CS1 reports\n")
+print(f"Generating the CS1 reports ...\n")
 
-subprocess.run(
-    ["python", "C:/Users/hilton.netta/OneDrive - Prescient/py/gitrepo/cs1_reporting.py"]
-)
-
-print(f" \n{timediff(start_time, time.time())} generating the CS1 reports\n")
+# scrpt = pth_gitrepo + r"\cs1_reporting.ipynb"
+subprocess.run(["python", cs1_reporting])
 
 print(
-    "\n",
-    f"{timediff(start_time_r28_cs1, time.time())} roundtripping download, merge and Reg 28 CS1 reports \n",
+    f" \n{timediff(start_time, time.time())} generating \
+the CS1 reports\n"
 )
 
-print("\n\n#######################")
-print("#    END r28_cs1.py   #")
-print("#######################\n\n")
+print(
+    f" \n{timediff(start_time_r28_cs1, time.time())} \
+roundtripping download, merge and Reg 28 CS1 reports\n",
+)
+
+print("\n\n#####################")
+print("#   END r28_c1.py   #")
+print("#####################\n\n")

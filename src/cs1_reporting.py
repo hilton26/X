@@ -3,36 +3,26 @@
 
 # # Prepare the CS1 reports
 
+# In[12]:
+
+
 # libraries, libraries!
 import time
 
 start_time_cs1 = time.time()
 start_time = time.time()
-import time
 from datetime import datetime, timedelta
 import pandas as pd
 from pathlib import Path
 import os
 from tqdm import tqdm
+from constants import pthPy, pthSttlmnt, pth_dl, pthReports, pthTest, pth_r28_lmts
 from utilities import (
     timediff,
     prior_month_end,
     item_row,
     range_border,
     rows_align_height,
-)
-
-print("Importing libraries and setting paths ...")
-
-# set paths
-pth_dl = str(Path.home() / "Downloads")
-pth_py = r"P:\Investment Operations\GRC\Compliance\Daily\py_reports.xlsm"
-pthReports = r"\\PIM-CPT-FS.prescient.local\PIM-Documents$\Investment Operations\GRC\Compliance\Reg28 and Reg30 Reporting"
-pthTest = r"P:\Working Folders\Hilton\W\Reg_Tests"
-pth_tmpl = r"P:\Working Folders\Hilton\W\!Reg28Templates.xlsx"
-
-print(
-    f"{timediff(start_time, time.time())} importing libraries and setting paths", "\n"
 )
 
 # import openpyxl and certain of its functions
@@ -58,68 +48,63 @@ thin_border = Side(style="thin", color="000000")  # black color
 cell_border = Border(
     left=thin_border, right=thin_border, top=thin_border, bottom=thin_border
 )  # e.g., sh["B15"].border = cell_border
+cell_font_calibri_11 = Font(
+    name="Calibri", size=11, color="000000"
+)  # https://www.youtube.com/watch?v=fzUbfI8z1uc at 4:56
+cell_font_calibri_11_bold = Font(
+    name="Calibri", size=11, color="000000", bold=True
+)  # https://www.youtube.com/watch?v=fzUbfI8z1uc at 4:56
 
 print(
-    f"{timediff(start_time, time.time())} importing openpyxl and some of its functions",
+    f" {timediff(start_time, time.time())} importing openpyxl and some of its functions",
     "\n",
 )
 
+# # get report data
+# def get_inputs():
+start_time_inputs = time.time()
+print(f"\nGetting the CS1 report inputs ...")
 
-# get report data
-def get_inputs():
-    start_time = time.time()
+# get list of funds
+# df     = pd.read_excel(pthPy, sheet_name = "r28_cs1", usecols = "A,D,F:G,J").dropna(subset = ['Fund'])
+df = pd.read_excel(pthPy, sheet_name="arc", usecols="N").dropna()
+df.columns = ["Funds"]  # rename column
+funds = df["Funds"].apply(str.upper)  # cconvert to series
 
-    global nl, funds, rptDate, zarusd, static, cln, td
+df2 = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows=10)
+cln = df2.iloc[8, 0]  # count CLNs as derivatives or not
+k = df2.iloc[1, 0]  # get report date
+rptDate = k if isinstance(k, datetime) else prior_month_end(datetime.today()).date()
+ZARUSD = df2.iloc[9, 0]  # get exchange rate
 
-    # get fund long names and types (UT, UCITS, ...)
-    pth_nl = r"\\PIM-CPT-FS.prescient.local\PIM-Documents$\Investment Operations\GRC\Compliance\Daily\fund_codes.xlsx"
-    nl = pd.read_excel(
-        pth_nl, sheet_name="Funds", index_col=None, header=0, usecols="A,B,E"
-    ).dropna(subset=["Fund Code"])
-
-    # get list of funds
-    pth_py = r"P:\Investment Operations\GRC\Compliance\Daily\py_reports.xlsm"
-    df = pd.read_excel(pth_py, sheet_name="r28_cs1", usecols="A,F:G,J").dropna(
-        subset=["Fund"]
-    )
-    funds = df["Fund"].apply(str.upper)
-    cln = df.iloc[0, 3]
-
-    # get Reg 28 classification codes and descriptions
-    static = pd.read_excel(pth_tmpl, sheet_name="Static", usecols="A,D").dropna()
-
-    # get report date
-    k = df.iloc[0, 1]
-    rptDate = (
-        k if isinstance(k, datetime) else prior_month_end()
-    )  # prior month end or report date override; type is datetime()
-    # print(rptDate.date(),'\n', fund_list)
-
-    # 13-month time difference
-    td = rptDate + timedelta(days=397)
-
-    # get exchange rate
-    zarusd = df.iloc[0, 2]
-
-    print(
-        "",
-        f"Reg 28 CS1 report{'' if len(funds) == 1 else 's'} as at {rptDate.strftime('%A %d %b %Y')}",
-        "\n",
-        f"ZAR/USD = {zarusd:.4f}",
-        "\n",
-        cln,
-        "\n",
-        f"{len(funds)} fund{'' if len(funds) == 1 else 's'}: ",
-        "\n",
-        f"{(',').join(funds)}",
-    )
-    print(
-        "\n\n",
-        f"{timediff(start_time, time.time())}: getting the CS1 report inputs with pd.read_excel() completed",
-    )
+s = "" if len(funds) == 1 else "s"
+print(
+    f"\n Reg 28 CS1 report{s} \n {rptDate.strftime('%A %d %b %Y')} \n ZAR/USD = {ZARUSD:.4f}\n \
+{len(funds)} fund{s}: \n  {(',').join(funds)}\n"
+)
+print(
+    f" {timediff(start_time_inputs, time.time())}: getting the CS1 report inputs completed\n"
+)
 
 
-get_inputs()
+# set constants
+
+start_time = time.time()
+print(f"\nSetting constants ...")
+
+# get fund long names and types (UT, UCITS, ...)
+nl = pd.read_excel(
+    pthSttlmnt, sheet_name="Funds", index_col=None, header=0, usecols="A,B,E"
+).dropna(subset=["Fund Code"])
+
+# get Reg 28 classification codes and descriptions
+static = pd.read_excel(pth_r28_lmts, sheet_name="Static", usecols="A,D").dropna()
+
+# 13-months to maturity, convert it from datetime.date to datetime.datetime
+td = rptDate + timedelta(days=397)
+td = datetime.combine(td, datetime.min.time())
+
+print(f" {timediff(start_time, time.time())} setting constants completed\n")
 
 # dataframe the CS1 PARN holdings sheet with All, PARN, and NAV tabs
 cs1_fname = os.path.join(
@@ -138,37 +123,37 @@ cs1_rpt_name = os.path.join(
 parn_r28 = pd.read_excel(cs1_rpt_name, sheet_name="CS1_All", usecols="A:M")
 
 # identify funds not common to both dataframes
-# holdings['Entity ID'].unique() # an array
-# parn_r28['Entity Name'].unique() # an array
 funds_not_classified = set(holdings["Entity ID"].unique()) ^ set(
     parn_r28["Entity Name"].unique()
 )
+none = "<empty>" if len(funds_not_classified) == 0 else (",").join(funds_not_classified)
 print(
-    " ",
-    f"{len(holdings['Entity ID'].unique()) - len(funds_not_classified)} of the {len(holdings['Entity ID'].unique())} funds were classified \
-with issuers_1.ipynb as at {rptDate.strftime('%d %B %Y')}.",
-    "\n",
-    f" Funds not classified ({len(funds_not_classified)}):",
-    "\n",
-    f" {'<none>' if len(funds_not_classified) == 0 else (',').join(funds_not_classified)}",
+    f" {len(holdings['Entity ID'].unique()) - len(funds_not_classified)} \
+out of the {len(holdings['Entity ID'].unique())} funds were classified \
+with issuers_1.ipynb as at {rptDate.strftime('%d %B %Y')}.\n  Funds not \
+classified ({len(funds_not_classified)}):\n  {none}"
 )
+
+
+# In[64]:
+
 
 # loop through each fund
 start_time_fund_loop = time.time()
 
-# # TEST portfolios for the loop
-# funds = ['ASHFLX', 'BCIFIF', 'BPROV', 'PGPCGE_C']
+# # TEST portfolios for the loop =======
+# funds = pd.DataFrame({'Fund': ['HOLYPF','PGPGIF_C','HOLDINC'], 'Include CLNs?': ['Exclude CLNs','Exclude CLNs','Exclude CLNs']})
+# # END OF TEST
 
-# w = {'y': 'Include CLNs', 'n': 'Don’t include CLNs'}
-# cln = w['y']
-
-open = 0  # open the file after saving it
+open = 0  # open the CS1 file after saving it
 
 no_holdings = []
 no_derivatives = []
+
 for fund in tqdm(funds):
-    # FUND SET-UP =====
-    # fund = 'PGPCGE_C'
+    filename = os.path.join(
+        pthTest, f"{fund} Reg28 CS1 Derivative Report {rptDate.strftime('%d%b%Y')}.xlsx"
+    )
 
     # make a mini version of the holdings and PARN reports specific to the fund
     hold = holdings[holdings["Entity ID"] == fund]
@@ -176,10 +161,9 @@ for fund in tqdm(funds):
     df = nl[nl["Fund Code"] == fund]
     fname = df.iloc[0, 1]
     ftyp = df.iloc[0, 2]
-    # cln   = df.iloc[]
-    zarusd = zarusd if (len(df) > 0) and (df.iloc[0, 2] in ["UCITS", "ICAV"]) else 1
+    zarusd = ZARUSD if (len(df) > 0) and (df.iloc[0, 2] in ["UCITS", "ICAV"]) else 1
 
-    # determine the types of derivatives in the fund
+    # determine the types of derivatives, in/excluding CLNs, in the fund
     if cln == "Include CLNs":
         list_of_dervs = parn["Derivative"].dropna().unique()
     else:
@@ -189,6 +173,7 @@ for fund in tqdm(funds):
             .unique()
         )
 
+    # test for no holdings in the fund ...
     if (
         len(parn) == 0
     ):  # if the fund has no holdings (didnt exist at the time or was terminated)
@@ -198,20 +183,21 @@ for fund in tqdm(funds):
             f"{fund}: ",
             f"{timediff(start_time_no_holdings, time.time())} no holdings in {fund} at {rptDate.strftime('%A %d %b %Y')}",
         )
-    elif len(list_of_dervs) == 0:  # if the fund has no derivatives
-        start_time_no_derivatives = time.time()
-        no_derivatives.append(
-            fund
-        )  # collect the names of all funds with no derivatives
-        print(
-            f"{fund}: ",
-            f"{timediff(start_time_no_derivatives, time.time())} no derivatives in {fund} at {rptDate.strftime('%A %d %b %Y')}",
-        )
+
+    # # test for no derivatives in the fund ...
+    # elif len(list_of_dervs) == 0: # if the fund has no derivatives
+    #     start_time_no_derivatives = time.time()
+    #     no_derivatives.append(fund) # collect the names of all funds with no derivatives
+    #     print(''f'{fund}: ',f'{timediff(start_time_no_derivatives, time.time())} no derivatives in {fund} at {rptDate.strftime("%A %d %b %Y")}')
+
+    # ... else produce the CS1 report
     else:
         start_time_cs1 = time.time()
 
+        # (1) FUND SET-UP =====
+
         # get a new CS1 template
-        wb = openpyxl.load_workbook(pth_tmpl)  # open the template
+        wb = openpyxl.load_workbook(pth_r28_lmts)  # open the template
         sh = wb["CS1"]  # assign the sheet to be worked on
 
         # delete non-CS1 sheets from the template workbook
@@ -220,25 +206,36 @@ for fund in tqdm(funds):
         for sht in shts:
             del wb[sht]
 
-        filename = os.path.join(
-            pthTest,
-            f"{fund} Reg28 CS1 Derivative Report {rptDate.strftime('%d%b%Y')}.xlsx",
-        )
-
         # make the sheet unique to the fund
-        #     print(f"fund: {fund}", f"item_row(sh, 'dce', 16): {item_row(sh, 'dce', 16)}",
-        # f"item_row(sh, 'total_counterparties', 16): {item_row(sh, 'total_counterparties', 16)}")
-
         sh.title = f"{fund} Reg28 CS1 {rptDate.strftime('%d%b%Y')}"  # sheet name
         sh["A1"] = f"{fname} ({fund})"  # fund name and short code on the sheet
         sh["A3"] = (
             f"Regulation 28 Derivatives Report (Conduct Standard 1 of 2023) as at {rptDate.strftime('%d %b %Y')}"  # sheet title
         )
 
-        # END OF FUND SET-UP =====
+        # END OF (1) FUND SET-UP =====
 
-        # DERIVATIVE COVER METRICS from derv_checker_compiling_csv_new.ipynb =====
+        # (2) TEST FOR NO DERIVATIVES IN THE FUND =====
+        if len(list_of_dervs) == 0:  # if the fund has no derivatives
+            start_time_no_derivatives = time.time()
+            no_derivatives.append(
+                fund
+            )  # collect the names of all funds with no derivatives
+            sh[
+                f"E{item_row(sh, 'first_row', 16)}"
+            ].value = "NO DERIVATIVES HELD IN THE FUND"
+            sh.cell(
+                row=item_row(sh, "no_derivatives", 16), column=5
+            ).font = cell_font_calibri_11_bold
+            print(
+                f"{fund}: ",
+                f"{timediff(start_time_no_derivatives, time.time())} no derivatives in {fund} at {rptDate.strftime('%A %d %b %Y')}",
+            )
 
+        # END OF (2) TEST FOR NO DERIVATIVES IN THE FUND =====
+
+        # (3) DERIVATIVE COVER METRICS from derv_checker_compiling_csv_new.ipynb =====
+        # calculate the derivative cover metrics
         dervs = (
             (hold["Valuation First Level"] == "DERIVATIVES").sum()
             + (hold["Valuation First Level"] == "FORWARDS").sum()
@@ -444,9 +441,9 @@ for fund in tqdm(funds):
             / nav,
         )  # cash excl MMFs < 0
 
-        # END OF DERIVATIVE COVER METRICS ==================================================
+        # END OF (3) DERIVATIVE COVER METRICS ==================================================
 
-        # HEADING header_asset_allocation "Asset allocation summary"
+        # (4) HEADING header_asset_allocation "Asset allocation summary" =====
 
         # Synthetic cash market value, row 9 of CS1 report
         sh["B9"] = (
@@ -903,36 +900,45 @@ for fund in tqdm(funds):
                 total += sh[f"{col}{row}"].value
                 sh[f"{col}{item_row(sh, 'total_asset_allocation', 16)}"] = total
 
-        # END OF HEADING header_asset_allocation "Asset allocation summary"
+        # END OF (4) HEADING header_asset_allocation "Asset allocation summary"
 
-        # HEADING header_long_cover_info "Long cover information" =====
+        # (5) HEADING header_long_cover_info "Long cover information" =====
         # insert fund values on the sheet
         sh[f"C{item_row(sh, 'nav', 16)}"] = nav * zarusd
         sh[f"C{item_row(sh, 'long_cover', 16)}"] = (
-            ailf + other_UTs + other_ETFs
+            ailf
         ) * zarusd  # row long_cover, column "C"
         sh[f"D{item_row(sh, 'long_cover', 16)}"] = (
-            (ailf + other_UTs + other_ETFs) / nav * 100
+            (ailf) / nav * 100
         )  # row long_cover, column "D"
+        # sh[f"C{item_row(sh, 'long_cover', 16)}"] = (ailf + other_UTs + other_ETFs) * zarusd       # row long_cover, column "C"
+        # sh[f"D{item_row(sh, 'long_cover', 16)}"] = (ailf + other_UTs + other_ETFs) / nav * 100    # row long_cover, column "D"
         if (ftyp == "UCITS") or (ftyp == "ICAV"):
             sh[f"A{item_row(sh, 'ucits_note', 16)}"] = (
-                f"*** the securities in the fund include deposits, transferable securities and money market instruments, \
-all of which are eligible for purposes of derivative cover under EU UCITS regulations"  # row ucits_note, column "A"
+                f"*** the securities in the fund include deposits, transferable securities and money market \
+instruments, all of which are eligible for purposes of derivative cover under EU UCITS regulations"  # row ucits_note, column "A"
             )
             sh.insert_rows(item_row(sh, "ucits_note", 16) + 1)
         else:
             sh[f"A{item_row(sh, 'ucits_note', 16)}"] = ""
 
         # create a dictionary of derivative descriptions and values
+        # dervs = {'d': ['Negative MtM on TRSes',               trs_neg_mtm],
+        #          'c': ['Bought futures or calls & sold puts', eqty_futs + bond_futs + eqty_fut_frgn_mtm + bond_fut_frgn_mtm +  max(0, crry_derv)],
+        #          'b': ['Negative MtM OTC derivatives',        otcs, trs_neg_mtm],
+        #          'a': ['Sold currency futures',               max(0, crry_derv)]}
         dervs = {
-            "d": ["Negative MtM on TRSes", trs_neg_mtm],
-            "c": [
+            "b": ["Negative MtM OTC derivatives", otcs, trs_neg_mtm],
+            "a": [
                 "Bought futures or calls & sold puts",
-                eqty_futs + bond_futs + eqty_fut_frgn_mtm + bond_fut_frgn_mtm,
+                eqty_futs
+                + bond_futs
+                + eqty_fut_frgn_mtm
+                + bond_fut_frgn_mtm
+                + max(0, crry_derv),
             ],
-            "b": ["Negative MtM OTC derivatives", otcs],
-            "a": ["Sold currency futures", -max(0, crry_derv)],
         }
+
         derv_rows = sum(
             [
                 -max(0, crry_derv) != 0,
@@ -996,12 +1002,24 @@ all of which are eligible for purposes of derivative cover under EU UCITS regula
             ):
                 sh[f"{col}{row}"].number_format = cell_format
 
-        # END OF HEADING header_long_cover_info "Long cover information" =====
+        # END OF (5) HEADING header_long_cover_info "Long cover information" =====
 
-        # HEADING header_derivatives "List of derivatives *" =====
+        # (6) HEADING header_derivatives "List of derivatives *" =====
         # list of derivatives
         d = item_row(sh, "derv_list", 16)
-        m = parn[(parn["Derivative"].notna()) & (parn["Investment Type"] != "SYTH")]
+        # m = parn[(parn['Derivative'].notna()) & (parn['Investment Type'] != 'SYTH')]
+        if cln == "Include CLNs":
+            m = parn[(parn["Derivative"].notna()) & (parn["Investment Type"] != "SYTH")]
+        else:
+            m = parn[
+                (parn["Derivative"] != "Credit-linked Note")
+                & (parn["Derivative"].notna())
+                & (parn["Investment Type"] != "SYTH")
+            ]
+        # if cln == 'Include CLNs':
+        #     m = parn[(parn['Investment Type'] != 'SYTH')]
+        # else:
+        #     m = parn[(parn['Derivative'] != 'Credit-linked Note') & (parn['Investment Type'] != 'SYTH')]
         k = m["Primary Asset ID"].unique()  # unique IDs in subset of derivatives
         # sh.insert_rows(d + 1, len(k) - 1)
         sh.insert_rows(d + 1, len(k))
@@ -1043,125 +1061,174 @@ all of which are eligible for purposes of derivative cover under EU UCITS regula
             sh[f"A{i}"].number_format = "#,##0"
             for col in ["M", "N"]:
                 sh[f"{col}{i}"].number_format = cell_format
-            for col in ["B", "C", "H", "J"]:
+            for col in ["B", "C", "H", "J", "O"]:
                 sh[f"{col}{i}"].alignment = Alignment(wrapText=True)
 
-            for col in [chr(i) for i in range(ord("A"), ord("O") + 1)]:
+            for col in [chr(i) for i in range(ord("A"), ord("P") + 1)]:
                 sh[f"{col}{i}"].border = cell_border
 
-        # END OF HEADING header_derivatives "List of derivatives *" =====
+        # END OF (6) HEADING header_derivatives "List of derivatives *" =====
 
-        # HEADING header_derivative_types "Derivative Counterparty Exposure **" =====
+        if len(list_of_dervs) == 0:
+            # delete locator column
+            sh.delete_cols(16, 2)
+        else:
+            # (7) HEADING header_derivative_types "Derivative Counterparty Exposure **" =====
 
-        # list of counterparties
-        # parn_cntpties = parn[(parn['Counterparty'].notna()) & (parn['Derivative'].notna()) &
-        #             (True if (cln == 'Include CLNs') else (parn['Derivative'] != 'Credit-linked Note')) & (parn['Investment Type'] != 'SYTH')]
-        parn_cntpties = parn[
-            (parn["Counterparty"].notna())
-            & (parn["Derivative"].notna())
-            & (parn["Investment Type"] != "SYTH")
-        ]
-        counterparties = parn_cntpties[
-            "Counterparty"
-        ].unique()  # unique counterparties in subset of counterparties
-        if len(counterparties) > 1:
-            sh.insert_rows(
-                item_row(sh, "header_derivative_types", 16) + 1, len(counterparties) - 1
-            )
+            # list of counterparties
+            if cln == "Include CLNs":
+                parn_cntpties = parn[
+                    (parn["Counterparty"].notna())
+                    & (parn["Derivative"].notna())
+                    & (parn["Investment Type"] != "SYTH")
+                ]
+            else:
+                parn_cntpties = parn[
+                    (parn["Counterparty"].notna())
+                    & (parn["Derivative"].notna())
+                    & (parn["Investment Type"] != "SYTH")
+                    & (parn["Derivative"] != "Credit-linked Note")
+                ]
 
-        # populate the headings of the 'Derivative Counterparty Exposure **' columns
-        for col_idx, derv in enumerate(list_of_dervs, start=4):
-            # print(col_idx, derv)
-            sh.cell(
-                row=item_row(sh, "header_derivative_types", 16),
-                column=col_idx,
-                value=derv,
-            )
-            sh.cell(
-                row=item_row(sh, "header_derivative_types", 16), column=col_idx
-            ).alignment = Alignment(horizontal="center", vertical="top")
-            sh.cell(
-                row=item_row(sh, "header_derivative_types", 16), column=col_idx
-            ).font = Font(bold=True, size=10, name="Arial")
-            sh.cell(
-                row=item_row(sh, "header_derivative_types", 16), column=col_idx
-            ).border = cell_border
-            sh.cell(
-                row=item_row(sh, "header_derivative_types", 16), column=col_idx
-            ).fill = PatternFill(
-                start_color="FFF2F2F2", end_color="FFF2F2F2", fill_type="solid"
-            )
-            # per counterparty and per derivative totals
-            for i, ctpty in enumerate(
-                counterparties, start=item_row(sh, "header_derivative_types", 16) + 1
-            ):
-                # print(i, ctpty)
-                j = parn_cntpties[parn_cntpties["Counterparty"] == ctpty]
-                sh.cell(row=i, column=col_idx).value = (
-                    abs(
-                        j[j["Derivative"] == derv]["Closing Exposure PA"]
-                        .astype(float)
-                        .sum()
-                    )
-                    * zarusd
-                )
-                sh.cell(row=i, column=1, value=ctpty)
-                sh.cell(row=i, column=1).alignment = Alignment(wrapText=True)
-                sh.cell(row=i, column=2).value = (
-                    abs(
-                        j[j["Counterparty"] == ctpty]["Closing Exposure PA"]
-                        .astype(float)
-                        .sum()
-                    )
-                    * zarusd
-                )
-                sh.cell(row=i, column=3).value = (
-                    abs(
-                        j[j["Counterparty"] == ctpty]["Closing Exposure PA"]
-                        .astype(float)
-                        .sum()
-                    )
-                    / nav
-                    * 100
+            counterparties = parn_cntpties[
+                "Counterparty"
+            ].unique()  # unique counterparties in subset of counterparties
+            if len(counterparties) > 1:
+                sh.insert_rows(
+                    item_row(sh, "header_derivative_types", 16) + 1,
+                    len(counterparties) - 1,
                 )
 
-        # total net counterparty exposure
-        total = 0
-        for row in range(
-            item_row(sh, "header_derivative_types", 16) + 1,
-            item_row(sh, "total_counterparties", 16),
-        ):
-            total += 0 if sh[f"B{row}"].value is None else sh[f"B{row}"].value
-        sh[f"B{item_row(sh, 'total_counterparties', 16)}"] = (
-            total  # net counterparty exposure in ZAR
-        )
-        sh[f"C{item_row(sh, 'total_counterparties', 16)}"] = (
-            total / zarusd / nav * 100
-        )  # net counterparty exposure as a % of NAV
+            # populate the headings of the 'Derivative Counterparty Exposure **' columns
+            for col_idx, derv in enumerate(list_of_dervs, start=4):
+                # print(col_idx, derv)
+                sh.cell(
+                    row=item_row(sh, "header_derivative_types", 16),
+                    column=col_idx,
+                    value=derv,
+                )
+                sh.cell(
+                    row=item_row(sh, "header_derivative_types", 16), column=col_idx
+                ).alignment = Alignment(horizontal="center", vertical="top")
+                sh.cell(
+                    row=item_row(sh, "header_derivative_types", 16), column=col_idx
+                ).font = Font(bold=True, size=10, name="Arial")
+                sh.cell(
+                    row=item_row(sh, "header_derivative_types", 16), column=col_idx
+                ).border = cell_border
+                sh.cell(
+                    row=item_row(sh, "header_derivative_types", 16), column=col_idx
+                ).fill = PatternFill(
+                    start_color="FFF2F2F2", end_color="FFF2F2F2", fill_type="solid"
+                )
 
-        # format numbers and borders of 'Derivative Counterparty Exposure **'
-        for col_idx in range(2, 4 + len(list_of_dervs)):
-            for row_idx in range(
+                # per counterparty and per derivative totals
+                for i, ctpty in enumerate(
+                    counterparties,
+                    start=item_row(sh, "header_derivative_types", 16) + 1,
+                ):
+                    # print(i, ctpty)
+                    j = parn_cntpties[parn_cntpties["Counterparty"] == ctpty]
+                    sh.cell(row=i, column=col_idx).value = (
+                        abs(
+                            j[j["Derivative"] == derv]["Closing Exposure PA"]
+                            .astype(float)
+                            .sum()
+                        )
+                        * zarusd
+                    )
+                    sh.cell(row=i, column=1, value=ctpty)
+                    sh.cell(row=i, column=1).alignment = Alignment(wrapText=True)
+                    sh.cell(row=i, column=2).value = (
+                        abs(
+                            j[j["Counterparty"] == ctpty]["Closing Exposure PA"]
+                            .astype(float)
+                            .sum()
+                        )
+                        * zarusd
+                    )
+                    sh.cell(row=i, column=3).value = (
+                        abs(
+                            j[j["Counterparty"] == ctpty]["Closing Exposure PA"]
+                            .astype(float)
+                            .sum()
+                        )
+                        / nav
+                        * 100
+                    )
+
+            # total net counterparty exposure
+            total = 0
+            for row in range(
                 item_row(sh, "header_derivative_types", 16) + 1,
-                item_row(sh, "header_derivative_types", 16) + 1 + len(counterparties),
+                item_row(sh, "total_counterparties", 16),
             ):
-                sh.cell(row=row_idx, column=col_idx).number_format = cell_format
-                sh.cell(row=row_idx, column=col_idx).border = cell_border
-                sh.cell(row=row_idx, column=col_idx).alignment = Alignment(
-                    horizontal="right"
-                )
+                total += 0 if sh[f"B{row}"].value is None else sh[f"B{row}"].value
+            sh[f"B{item_row(sh, 'total_counterparties', 16)}"] = (
+                total  # net counterparty exposure in ZAR
+            )
+            sh[f"C{item_row(sh, 'total_counterparties', 16)}"] = (
+                total / zarusd / nav * 100
+            )  # net counterparty exposure as a % of NAV
 
-        # END OF HEADING header_derivative_types "Derivative Counterparty Exposure **" =====
+            # format numbers and borders of 'Derivative Counterparty Exposure **'
+            for col_idx in range(2, 4 + len(list_of_dervs)):
+                for row_idx in range(
+                    item_row(sh, "header_derivative_types", 16) + 1,
+                    item_row(sh, "header_derivative_types", 16)
+                    + 1
+                    + len(counterparties),
+                ):
+                    sh.cell(row=row_idx, column=col_idx).number_format = cell_format
+                    sh.cell(row=row_idx, column=col_idx).border = cell_border
+                    sh.cell(row=row_idx, column=col_idx).alignment = Alignment(
+                        horizontal="right"
+                    )
 
-        # AUTO-ALIGN rows in the sheet
-        # def rows_align_height(worksheet, row_from, row_to, col, normal_height, text_test_lengthcol_right, new_height):
-        rows_align_height(sh, 1, sh.max_row, 3, 15.75, 30, 51)
-        # END OF AUTO-ALIGNING rows in the sheet
+            # END OF (7) HEADING header_derivative_types "Derivative Counterparty Exposure **" =====
 
-        # SAVING THE FILE =====
+            # (8) TOUCH-UPS to the sheet
 
-        # save the file and close openpyxl
-        pthTest = r"P:\Working Folders\Hilton\W\Reg_Tests"
+            # apply font Calibri, size 11 to all cells on the sheet
+            for row_idx in range(
+                item_row(sh, "first_row", 16), item_row(sh, "last_row", 16) + 1
+            ):
+                for col_idx in range(1, 16):
+                    sh.cell(row_idx, col_idx).font = cell_font_calibri_11
+
+            # apply bold fint to each of the headings and totals on the sheet
+            bold_titles = [
+                "first_row",
+                "investment_manager",
+                "report_title",
+                "nav",
+                "header_asset_allocation",
+                "total_asset_allocation",
+                "title_long_cover_info",
+                "header_long_cover_info",
+                "list_of_derivatives",
+                "header_derivatives",
+                "derivative_counterparty_exposure",
+                "header_derivative_types",
+                "total_counterparties",
+                "disclosures",
+            ]
+            for title in bold_titles:
+                for col_idx in range(1, 16):
+                    sh.cell(
+                        item_row(sh, title, 16), col_idx
+                    ).font = cell_font_calibri_11_bold
+
+            # def rows_align_height(worksheet, row_from, row_to, col, normal_height, text_test_lengthcol_right, new_height):
+            rows_align_height(sh, 1, sh.max_row, 3, 15.75, 30, 60)
+
+            # delete locator column
+            sh.delete_cols(16, 2)
+
+            # END OF (8) TOUCH-UPS to the sheet
+
+        # (9) SAVING THE FILE =====
+
         stop_time_cs1 = time.time()
 
         # add the (non-lookthrough) Reg28 classification sheet to the workbook
@@ -1183,58 +1250,41 @@ all of which are eligible for purposes of derivative cover under EU UCITS regula
         wb.save(filename)
         wb.close
         print(
-            f"{fund}: ",
-            f"{timediff(start_time_cs1, stop_time_cs1)} CS1 sheet, {timediff(start_time_r28, time.time())} Reg28 sheet for {filename}",
+            f" {fund} ({'incl' if cln == 'Include CLNs' else 'excl'} CLNs): {timediff(start_time_cs1, stop_time_cs1)} CS1 sheet, \
+{timediff(start_time_r28, time.time())} Reg28 sheet, {filename}\n"
         )
 
-        # END OF SAVING THE FILE =====
+        # END OF (9) SAVING THE FILE =====
 
         if open == 1:
             open_xl_file(filename)
 
+s = "s" if len(no_holdings) != 1 else ""
 print(
-    "\n",
-    f"Fund{'s' if len(no_holdings) != 1 else ''} with no holdings at {rptDate.strftime('%A %d %b %Y')} \
-({len(no_holdings)}):",
-    "\n",
-    "",
-    f"{(',').join(no_holdings)}",
-)
-print(
-    "\n",
-    f"Fund{'s' if len(no_derivatives) != 1 else ''} with no derivatives at {rptDate.strftime('%A %d %b %Y')} \
-({len(no_derivatives)}):",
-    "\n",
-    "",
-    f"{(',').join(no_derivatives)}",
-    "\n",
-)
-print(
-    f"{timediff(start_time_fund_loop, time.time())} CS1 report roundtrip time for {len(funds)} funds at {rptDate.strftime('%d %b %Y')}"
+    f"\nFund{s} with no holdings at \
+{rptDate.strftime('%A %d %b %Y')} \
+({len(no_holdings)}):\n {(',').join(no_holdings)}"
 )
 
-print(*no_derivatives)
+s = "s" if len(no_derivatives) != 1 else ""
+print(
+    f"Fund{s} with no derivatives at \
+{rptDate.strftime('%A %d %b %Y')} \
+({len(no_derivatives)}): {(',').join(no_derivatives)}\n"
+)
+# print(f'{timediff(start_time_fund_loop, time.time())} CS1 report roundtrip time for {len(funds)} funds at {rptDate.strftime("%d %b %Y")}')
 
-# combine PARN, Reg28, no_holdings, and no_derivatives dataframes into one workbook
+
+# In[65]:
+
+
+# combine PARN, Reg28, no_holdings, and no_derivatives dataframes into one workbook for review
 
 start_time_combined_workbook = time.time()
-print(f"Combining workbook for {len(funds)} funds at {rptDate.strftime('%d %b %Y')}")
+print(
+    f"Combining workbook for {len(funds)} funds at {rptDate.strftime('%d %b %Y')} ..."
+)
 
-# # get list of funds
-# pth_py = r"P:\Investment Operations\GRC\Compliance\Daily\py_reports.xlsm"
-# df = pd.read_excel(pth_py, sheet_name="r28_cs1", usecols="A,F:G,J").dropna(subset = ['Fund'])
-# funds = df['Fund'].apply(str.upper)
-
-# # dataframe the CS1 PARN holdings sheet with All, PARN, and NAVs tabs
-# cs1_fname = os.path.join(pthTest, f'CS1 PARN holdings ({len(funds)}) {rptDate.strftime("%d%b%Y")}.xlsx')
-# holdings  = pd.read_excel(cs1_fname, sheet_name = 'PARN', usecols = 'A:AQ')
-# navs      = pd.read_excel(cs1_fname, sheet_name = 'NAVs', usecols = 'A:I')
-
-# # dataframe the Reg 28 CS1 reports
-# cs1_rpt_name = os.path.join(pthTest, f'Reg28 CS1 reports {rptDate.strftime("%d%b%Y")}.xlsx')
-# parn_r28  = pd.read_excel(cs1_rpt_name, sheet_name = 'CS1_All', usecols = 'A:M')
-
-# write the summary, fund holdings, and derivative deltas to a workbook
 combined_name = os.path.join(
     pthTest, f"Combined CS1 reports {rptDate.strftime('%d%b%Y')}.xlsx"
 )  # assign the file name
@@ -1261,5 +1311,21 @@ pd.DataFrame(no_derivatives, columns=["No Derivatives"]).to_excel(
 writer.close()  # https://pandas.pydata.org/docs/reference/api/pandas.ExcelWriter.html   class for writing DataFrame objects into excel sheets
 
 print(
-    f"{timediff(start_time_combined_workbook, time.time())} combining workbook for {len(funds)} funds at {rptDate.strftime('%d %b %Y')}"
+    f"\n {timediff(start_time_combined_workbook, time.time())} combining workbook for {len(funds)} funds at {rptDate.strftime('%d %b %Y')}\n"
 )
+
+print(
+    f" {timediff(start_time_fund_loop, time.time())} CS1 report roundtrip time for {len(funds)} funds at {rptDate.strftime('%d %b %Y')}\n"
+)
+
+# STEPS
+
+# (1) FUND SET-UP =====
+# (2) TEST FOR NO DERIVATIVES IN THE FUND =====
+# (3) DERIVATIVE COVER METRICS from derv_checker_compiling_csv_new.ipynb =====
+# (4) HEADING header_asset_allocation "Asset allocation summary" ====
+# (5) HEADING header_long_cover_info "Long cover information" =====
+# (6) HEADING header_derivatives "List of derivatives *" =====
+# (7) HEADING header_derivative_types "Derivative Counterparty Exposure **" =====
+# (8) TOUCH-UPS to the sheet
+# (9) SAVING THE FILE

@@ -9,7 +9,7 @@ from pathlib import Path
 import os
 
 # scripts folder
-X = r"C:\Users\hilton.netta\OneDrive - Prescient\py\X"
+X = r"C:\Users\hilton.netta\OneDrive - Prescient\py\X\src"
 pth_gitrepo = X
 selenium_drivers = r"C:/SeleniumDrivers"
 pre_issuers_1 = pth_gitrepo + r"/gemsmed_pre_issuers_1.py"
@@ -19,6 +19,8 @@ issuers_3 = pth_gitrepo + r"/issuers_3.py"
 issuers_1_nb = pth_gitrepo + r"/issuers_1.ipynb"
 issuers_2_nb = pth_gitrepo + r"/issuers_2.ipynb"
 issuers_3_nb = pth_gitrepo + r"/issuers_3.ipynb"
+cs1_reporting_nb = pth_gitrepo + r"/cs1_reporting.ipynb"
+cs1_reporting = pth_gitrepo + r"/cs1_reporting.py"
 const = pth_gitrepo + r"/constants.py"
 dc_do = pth_gitrepo + r"/derv_checker_downloading.py"
 dc_co = pth_gitrepo + r"/derv_checker_compiling.py"
