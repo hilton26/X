@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### Deletes a file given its path
+# ### deletes a file given its path
 
 import os, shutil
 import pandas as pd
 from constants import pthPy, pthHdg, frcv_file, pthDaily
 
-df = pd.read_excel(pthPy, sheet_name="arc", usecols="AW", nrows=9)
-
+df = pd.read_excel(pthPy, sheet_name="arc", usecols="AW", nrows=3)
+df
+print(frcv_file)
 
 if pd.isna(df.iloc[2, 0]):
     if df.iloc[0, 0] == "Derv":
@@ -33,7 +34,7 @@ except FileNotFoundError:
 except Exception as e:
     print(f"An error occurred: {e}")
 
-# if the Free Cover file was deleted, replace with a new one
+# if the Free Cover file was deleted, replace it
 if df.iloc[0, 0] == "Derv":
     source = pthDaily + r"\Free Cover_SPARE.xlsm"
     destination = pthDaily + r"\Free Cover.xlsm"

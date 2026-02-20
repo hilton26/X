@@ -519,6 +519,12 @@ for index, fname in enumerate(tqdm(fnames_incompl), start=1):
     ]["Sum of Market Value Income"].sum()  # mark-to-market p&l on bond futures
 
     # leverage
+    excl = ["CASH", "MONEY MARKET", "UNKNOWN", "SYTH"]
+    lvg_g = hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"
+    ].abs().sum() / nav * 100  # leverage gross
+    lvg_c = hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"
+    ].sum() / nav * 100  # leverage commitment (net)
+
     net_eff_exp = -min(
         0, hold[hold["Investment Type"] == "SYTH"]["Current Exposure"].sum() / nav
     )
@@ -536,6 +542,8 @@ for index, fname in enumerate(tqdm(fnames_incompl), start=1):
     sh["E16"] = net_eff_exp
     sh["E17"] = short_cash
     sh["E18"] = sh["E16"].value + sh["E17"].value
+    sh["E19"] = lvg_g
+    sh["E20"] = lvg_c
 
     # assign cell values
     sh["B6"] = ailf
@@ -676,11 +684,12 @@ UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
             sh.cell(r + 1, k).value = futs_bd_wo["Current Exposure %"].iloc[k - n] / 100
 
     r = 13  # 'H14' currency futures
-    futs_cr = hold[hold["Valuation Second Level"] == "Currency Derivatives"]
+    futs_cr = -hold[hold["Valuation Second Level"] == "Currency Derivatives"]
+    # futs_cr = hold[hold["Valuation Second Level"] == "Currency Derivatives"] # minus added 16Feb 2026 to align wit5h manual report calc
     sh.cell(r, n - 1).value = (
         "Currency futures (" + str(len(futs_cr["i Issue Name"])) + ")"
     )
-    if len(futs_cr) > 0:
+    if len(futs_cr) < 0:
         sh.cell(r + 1, n - 1).value = futs_cr["Current Exposure %"].sum() / 100
         for k in range(n, len(futs_cr) + n):
             sh.cell(r, k).value = futs_cr["i Issue Name"].iloc[k - n]

@@ -3,9 +3,9 @@
 
 # # Summarise Derivative Cover Check Sheets - new format
 
-print("##############################################")
-print("#     START 3/4 DERV_CHECKER_SUMMARISING     #")
-print("##############################################")
+print("\n\n##############################################")
+print("#    START 3/4 derv_checker_summarising.py   #")
+print("##############################################\n\n")
 
 # Import libraries
 
@@ -132,6 +132,8 @@ cols = [
     "Fund Rules",
     "Team",
     "PIM Overdrafts",
+    "Leverage (Gross)",
+    "Leverage (Net)",
 ]
 
 for col in cols:  # create an empty summary dataframe with the given column headings
@@ -150,40 +152,6 @@ print(
     f"Populating the summary dataframe with {len(funds)} \
 funds for {rptDate.strftime('%A %#d %B %Y')} ..."
 )
-
-# create a dataframe with the necessary columns
-summary = pd.DataFrame(funds, columns=["Fund Code"])
-
-cols = [
-    "UT?",
-    "#",
-    "Cash Cover",
-    "Cash Cover 2",
-    "Incl CLNs & longer-dated debt",
-    "Incl Underlying UTs",
-    "SA Equity Indices",
-    "Ex-SA Equity Indices",
-    "SA Bond Indices",
-    "Ex-SA Bond Indices",
-    "Currency Futures",
-    "Currency Forwards",
-    "Swaps",
-    "FRAs",
-    "SA Bond Cover",
-    "Foreign Equity Cover",
-    "Local Equity Cover",
-    "Total Equity",
-    "Total Foreign",
-    "Global Exposure",
-    "Net Effective Exposure",
-    "Fund Rules",
-    "Team",
-    "PIM Overdrafts",
-]
-
-for col in cols:  # create an empty summary dataframe with the given column headings
-    summary[col] = ""
-    # https://www.reddit.com/r/learnpython/comments/n1ee17/how_to_add_multiple_empty_columns_into_my_data/
 
 # read each fund's 'xxxx Derv Calc ddmmmyyyy.xlsx' sheet into the summary dataframe
 if summ_yn != "No":
@@ -241,6 +209,9 @@ if summ_yn != "No":
             0, 1
         ]  # investment team lookup on 2AXX sheet
         summary.iat[index, 24] = round(ddfSm.iat[3, 1], 2)  # fund NAV
+        summary.iat[index, 25] = round(ddfSm.iat[18, 4], 1)  # fund leverage (gross)
+        summary.iat[index, 26] = round(ddfSm.iat[19, 4], 1)  # fund leverage (net)
+
         # Using at[] and iat[] instead of loc[] and iloc[]
         # https://stackoverflow.com/questions/28757389/pandas-loc-vs-iloc-vs-at-vs-iat
         # at and iat are meant to access a scalar, that is, a single element in the dataframe,
@@ -451,10 +422,6 @@ print(f"{timediff(start_time, time.time())} writing the datafrem to a sheet")
 
 # sorted_summary
 
-
-# In[ ]:
-
-
 # prettify the summary sheet and add hyperlinks with xlwings
 
 print(f"Prettifying and adding links to the summary sheet with xlwings ...")
@@ -487,10 +454,10 @@ if summ_yn != "No":
     shtS["Z1"].api.HorizontalAlignment = -4108  # xlCenter
     shtS["Z1"].api.VerticalAlignment = -4160  # xlTop
     shtS[
-        "A1:Z1"
+        "A1:AA1"
     ].api.WrapText = True  # https://docs.xlwings.org/en/stable/missing_features.html
     shtS[
-        "A1:Z1"
+        "A1:AA1"
     ].font.bold = True  # https://docs.xlwings.org/en/stable/missing_features.html
 
     # add investment team names and links to fund mandates and calculation sheets
@@ -660,6 +627,6 @@ print(
         summarise derivative calcs \n"
 )
 
-print("##############################################")
-print("#      END 3/4 DERV_CHECKER_SUMMARISING      #")
-print("##############################################")
+print("\n\n##############################################")
+print("#     END 3/4 derv_checker_summarising.py    #")
+print("##############################################\n\n")
