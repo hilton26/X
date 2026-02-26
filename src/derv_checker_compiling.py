@@ -684,7 +684,7 @@ UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
             sh.cell(r + 1, k).value = futs_bd_wo["Current Exposure %"].iloc[k - n] / 100
 
     r = 13  # 'H14' currency futures
-    futs_cr = -hold[hold["Valuation Second Level"] == "Currency Derivatives"]
+    futs_cr = hold[hold["Valuation Second Level"] == "Currency Derivatives"]
     # futs_cr = hold[hold["Valuation Second Level"] == "Currency Derivatives"] # minus added 16Feb 2026 to align wit5h manual report calc
     sh.cell(r, n - 1).value = (
         "Currency futures (" + str(len(futs_cr["i Issue Name"])) + ")"

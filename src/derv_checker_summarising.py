@@ -418,7 +418,7 @@ writer.close()  # https://pandas.pydata.org/docs/reference/api/pandas.ExcelWrite
 print(" ", summary_name)
 # TEST ++++++++++++++++
 
-print(f"{timediff(start_time, time.time())} writing the datafrem to a sheet")
+print(f"{timediff(start_time, time.time())} writing the dataframe to a sheet")
 
 # sorted_summary
 

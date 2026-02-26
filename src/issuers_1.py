@@ -308,6 +308,15 @@ def besa(
         return "B"
 
 
+# function to identify strings of text starting with 3 or 4 capital
+# letters and ending with two or three digits
+# to identify candidate BESA-listed securities
+def besa_maybe(txt):
+    pattern = r"^[A-Z]{3,4}\d{2,3}$"
+    if re.search(pattern, str(txt).upper()):
+        return 1
+
+
 # function to identify a repo
 def repo(txt):
     pattern = "RPCO|RPMT|RPCA"
@@ -620,6 +629,7 @@ uniques["MedCirc"] = uniques["Primary Asset ID"].map(medcirc)
 uniques["GovGuar"] = uniques["Primary Asset ID"].map(gvg)
 uniques["repo"] = uniques["Primary Asset ID"].map(repo)
 uniques["BESA"] = uniques["Primary Asset ID"].map(besa)
+uniques["BESA_MAYBE"] = uniques["Primary Asset ID"].map(besa_maybe)
 # uniques['margin']         = uniques.apply(mrg, axis = 1)
 uniques["margin"] = uniques.apply(
     lambda x: mrg(x["i Issue Name"], x["Primary Asset ID"]), axis=1

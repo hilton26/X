@@ -7,15 +7,15 @@
 #
 # https://pythonexamples.org/python-selenium-wait-until-element-is-visible/
 
-print("######################################")
-print("# START 1/4 DERV_CHECKER_DOWNLOADING #")
-print("######################################")
+print("\n\n#########################################")
+print("# START 1/4 derv_checker_downloading.py #")
+print("#########################################\n\n")
 
 import time
 
 start_time = time.time()
 start_time_derivative_downloading = time.time()
-print("Importing libraries and setting paths for derv_checker_downloading.ipynb ...")
+print("Importing libraries ...")
 
 # load libraries
 import pandas as pd
@@ -38,11 +38,7 @@ summ_yn = df.iloc[3, 1]
 full = df[0].iloc[1:]
 funds = (",").join(full.tolist())
 
-print(
-    f"{timediff(start_time, time.time())} importing libraries \
-        and setting paths for derv_checker_downloading.py",
-    "\n",
-)
+print(f"{timediff(start_time, time.time())} importing libraries\n")
 
 # derive file names
 start_time = time.time()
@@ -189,6 +185,6 @@ print(
     "\n",
 )
 
-print("######################################")
-print("#  END 1/4 DERV_CHECKER_DOWNLOADING  #")
-print("######################################")
+print("\n\n##########################################")
+print("#  END 1/4 derv_cjhecker_downloading.py  #")
+print("##########################################\n\n")

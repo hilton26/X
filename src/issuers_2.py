@@ -120,6 +120,7 @@ uniques_cols = [
     "FRN",
     "ILB",
     "BESA",
+    "BESA_MAYBE",
     "repo",
     "margin",
     "Date",
@@ -346,11 +347,14 @@ def classify_Reg28(row):
             and (row["CCY"] == "ZAR")
             and (row["Bank"] == "s")
             and (row["margin"] != 1)
-            and (row["Term"] < 396)
+            and (row["Term"] < 396 or row["FRN"] == 1)
         )
         or ((row["Fund"] == "f") and (row["fnd_typ"] == "c") and (row["CCY"] == "ZAR"))
-        or (row["FRN"] == 1)
-        or ("CALL" in row["Primary Asset ID"])
+        or (
+            ("CALL" in row["Primary Asset ID"])
+            and (row["Bank"] == "s")
+            and (row["CCY"] == "ZAR")
+        )
     ):
         return "1.1(b)"
 
@@ -415,7 +419,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "s"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or row["repo"] == "RPC")
         and row["MCap"] > 20
     ):
         return "2.1(c)(i)"
@@ -424,7 +428,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "s"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or row["repo"] == "RPC")
         and row["MCap"] < 20
         and row["MCap"] > 2
     ):
@@ -434,7 +438,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "s"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or row["repo"] == "RPC")
         and row["MCap"] < 20
         and row["MCap"] < 2
     ):
@@ -444,7 +448,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "s"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or pd.isna(row["Term"]) or row["repo"] == "RPC")
         and (row["MCap"] == 0 or pd.isna(row["MCap"]))
     ):
         return "2.1(c)(iv)"
@@ -457,7 +461,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "b"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or row["repo"] == "RPC")
         and row["MCap"] > 20
     ):
         return "2.2(c)(i)"
@@ -466,7 +470,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "b"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or row["repo"] == "RPC")
         and row["MCap"] < 20
         and row["MCap"] > 2
     ):
@@ -476,7 +480,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "b"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or row["repo"] == "RPC")
         and row["MCap"] < 20
         and row["MCap"] < 2
     ):
@@ -486,7 +490,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and row["Bank"] == "b"
-        and row["Term"] >= 396
+        and (row["Term"] >= 396 or pd.isna(row["Term"]) or row["repo"] == "RPC")
         and pd.isna(row["MCap"])
     ):
         return "2.2(c)(iv)"
@@ -495,7 +499,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or (row["dX"] == "d"))
         and ((row["GPL"] == "p") or (row["MCap"] > 0))
-        and (row["BESA"] == "B")
+        and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
         and (row["CCY"] == "ZAR")
         or (
             (row["Fund"] == "f")
@@ -510,7 +514,7 @@ def classify_Reg28(row):
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
         and (row["GPL"] == "p" or row["MCap"] > 0)
-        and row["BESA"] != "B"
+        and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
         and row["CCY"] == "ZAR"
     ):
         return "2.1(d)(ii)"
@@ -520,7 +524,7 @@ def classify_Reg28(row):
         res(["FI", "ST"], row["Investment Type"])
         and row["GPL"] != "p"
         and pd.isna(row["MCap"])
-        and row["BESA"] == "B"
+        and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
         and row["CCY"] == "ZAR"
     ):
         return "2.1(e)(i)"
@@ -530,7 +534,7 @@ def classify_Reg28(row):
         res(["FI", "ST"], row["Investment Type"])
         and (row["GPL"] != "p")
         and (pd.isna(row["MCap"]) or (row["MCap"] == 0))
-        and (row["BESA"] != "B")
+        and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
         and (row["CCY"] == "ZAR")
         or (
             (row["Fund"] == "f")
@@ -546,6 +550,7 @@ def classify_Reg28(row):
         res(["FI", "ST"], row["Investment Type"])
         and ((row["GPL"] == "p") or (row["MCap"] > 0))
         and (row["CCY"] != "ZAR")
+        and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
         or ((row["Fund"] == "f") and (row["fnd_typ"] == "d") and (row["CCY"] != "ZAR"))
     ):
         return "2.2(d)(i)"
@@ -554,7 +559,7 @@ def classify_Reg28(row):
     elif (
         res(["FI", "ST"], row["Investment Type"])
         and (row["GPL"] == "p" or row["MCap"] > 0)
-        and row["BESA"] != "B"
+        and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
         and row["CCY"] != "ZAR"
     ):
         return "2.2(d)(ii)"
@@ -564,7 +569,7 @@ def classify_Reg28(row):
         res(["FI", "ST"], row["Investment Type"])
         and row["GPL"] != "p"
         and (pd.isna(row["MCap"]) or row["MCap"] == 0)
-        and row["BESA"] != "B"
+        and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
         and row["CCY"] != "ZAR"
     ):
         return "2.2(e)(i)"
@@ -574,7 +579,7 @@ def classify_Reg28(row):
         res(["FI", "ST"], row["Investment Type"])
         and row["GPL"] != "p"
         and pd.isna(row["MCap"])
-        and row["BESA"] != "B"
+        and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
         and row["CCY"] != "ZAR"
     ):
         return "2.2(e)(ii)"
