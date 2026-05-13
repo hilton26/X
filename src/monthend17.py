@@ -39,26 +39,13 @@ start_time = time.time()
 # df = pd.read_excel(pth_me17, sheet_name="Process", usecols="C", nrows=1)
 df = pd.read_excel(pthPy, sheet_name="arc", usecols="AG", nrows=2)
 k = df.iloc[1, 0]
-rptDate = (
-    k if k == k else prior_month_end().date()
-)  # prior month-end or report date override; has type datetime.datetime()
+rptDate = k if k == k else prior_month_end().date()
 print(
     f" {rptDate.strftime('%A %d %b %Y')} \
-for reporting MonthEnd17.xlsm"
+reporting date from 'arc' sheet"
 )
 
-# update reporting date in MonthEnd17.xlsm
-# import xlwings as xw
-
-# wb_py = xw.Book(pth_me17)  # visible=False runs Excel in the background
-# visible = False
-# ws = wb_py.sheets("Process")
-# ws.range("C2").value = rptDate
-# wb_py.save()
-# wb_py.close()
-
 # get the 'all' sheets from issuers_2,xlsx and issuers_3.xlsx and merge them
-# https://stackoverflow.com/questions/17977540/pandas-looking-up-the-list-of-sheets-in-an-excel-file
 issuers_2 = pthTest + rf"\issuers_2_{rptDate.strftime('%d%b%Y')}.xlsx"
 is2 = pd.read_excel(issuers_2, sheet_name=None)
 is2 = pd.read_excel(issuers_2, sheet_name=list(is2.keys())[0])
@@ -74,7 +61,7 @@ print(
 )
 
 print(
-    f"{timediff(start_time, time.time())} dataframing the issuers_2_ddMMMyyyy.xlsx and issuers_3_ddMMMyyyy.xlsx sheets \n"
+    f"{timediff(start_time, time.time())} dataframing the issuers_2 and issuers_3 sheets used for month-end reporting\n"
 )
 
 # create the funds dataframe with the merge of issuers_2 and issuers_3 and fund long names
@@ -147,10 +134,10 @@ funds["Instrument_CurrencyCode"] = funds["CCY"]
 funds["Instrument_InstrumentTypeCode"] = funds["Investment Type"]
 funds["Instrument_IssuerCode"] = funds["Issuer"]
 funds["Instrument_MaturityDate"] = funds["Date"]
-funds["Instrument_PropertyIndicator"] = list(funds["Property"] == "P")
+funds["Instrument_PropertyIndicator"] = list(funds["property"] == "P")
 
 # new column based on an if-else statement - https://www.dataquest.io/blog/tutorial-add-column-pandas-dataframe-based-on-if-else-condition/
-funds["Issuer_Infrastructure"] = np.where(funds["Infra"] == "i", True, False)
+funds["Issuer_Infrastructure"] = np.where(funds["infra"] == "i", True, False)
 
 
 # https://stackoverflow.com/questions/40953914/python-return-multiple-values-and-check-for-return-false
@@ -337,11 +324,13 @@ print("Creating and then saving individual look-through holdings report workbook
 # open xlwings to write the reports
 import xlwings as xw
 
+app = xw.App(visible=False)  # no visible sheet updating
+
 # for fund in tqdm(funds['PortfolioCode'].unique()):
 for fund in tqdm(me17_list):
     # open the derv template and assign holdings and data sheets
     # print(fund)
-    wb = xw.Book()  # open a new workbook - https://docs.xlwings.org/en/stable/quickstart.htmlthe derv calc workbook as an object
+    wb = app.books.add()  # open a new workbook
     sh = wb.sheets["Sheet1"]  # get the sheet
     sh.name = (
         f"{fund.replace('_EXP', '')} {rptDate.strftime('%d%b%Y')}"  # rename the sheet
@@ -392,9 +381,7 @@ print(
 )
 print("\n", f"Roundtrip time: {timediff(start_time_me17, time.time())}")
 
-print(
-    "\n =========================== \n FINISHED monthend17.ipynb \n==========================="
-)
+app.quit()
 
 print("\n\n##########################")
 print("#    END monthend17.py   #")

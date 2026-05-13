@@ -326,6 +326,7 @@ def classify_Reg28(row):
             and (row["Primary Asset ID"] != "SAFEX")
             and (row["Bank"] == "s")
             and (row["CCY"] == "ZAR")
+            and (row["rpc"] != "RPC")
         )
         or (row["Investment Type"] == "SYTH")
         or (
@@ -348,6 +349,7 @@ def classify_Reg28(row):
             and (row["Bank"] == "s")
             and (row["margin"] != 1)
             and (row["Term"] < 396 or row["FRN"] == 1)
+            and (row["repo"] != "RPC")
         )
         or ((row["Fund"] == "f") and (row["fnd_typ"] == "c") and (row["CCY"] == "ZAR"))
         or (
@@ -370,7 +372,9 @@ def classify_Reg28(row):
     elif (
         (
             res(["ST", "CASH", "FWD", "SYTH"], row["Investment Type"])
-            and row["Bank"] == "b"
+            and (
+                (row["Bank"] == "b") or (row["Bank"] == "s") and (row["repo"] != "RPC")
+            )
         )
         or (res(["OP", "FT"], row["Investment Type"]) and row["dX"] == "c")
         or (row["Primary Asset ID"] == "0649317")
@@ -985,7 +989,7 @@ def classify_Reg30(row):
         row["Investment Type"] == "EQ"
         and row["CCY"] == "ZAR"
         and row["Property"] != "P"
-        and row["Exchange"] == "DCVC"
+        and (row["Exchange"] == "DCVC" or row["exchange"] is np.nan)
     ):
         return "4(a)(i)"
 

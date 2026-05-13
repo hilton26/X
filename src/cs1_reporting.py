@@ -16,7 +16,7 @@ import pandas as pd
 from pathlib import Path
 import os
 from tqdm import tqdm
-from constants import pthPy, pthSttlmnt, pth_dl, pthReports, pthTest, pth_r28_lmts
+from constants import pthPy, pthSttlmnt, pthTest, pth_r28_lmts
 from utilities import (
     timediff,
     prior_month_end,

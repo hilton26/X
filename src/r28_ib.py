@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-print("\n\n##########################")
-print("#     START r28_ib.py    #")
-print("##########################\n\n")
+print("\n\n#################################")
+print("#                               #")
+print("#        START r28_ib.py        #")
+print("#                               #")
+print("#################################\n\n")
 
-from datetime import datetime
 import time
+from datetime import datetime
 import pandas as pd
 import os
 import openpyxl
-import copy  # "AttributeError: Style objects are immutable and cannot be changed. Reassign the style with a copy"
+
+# import copy  # "AttributeError: Style objects are immutable and cannot be changed. Reassign the style with a copy"
 from openpyxl.styles import (
     NamedStyle,
     Alignment,
@@ -44,23 +47,21 @@ def get_inputs():
     nl = pd.read_excel(
         pthSttlmnt, sheet_name="Funds", index_col=None, header=0, usecols="A,B"
     ).dropna(subset=["Fund Code"])
-    # funds = pd.read_excel(pthPy, sheet_name="r28_ib", usecols="A").dropna()
     funds = pd.read_excel(pthPy, sheet_name="arc", usecols="N").dropna()
     funds.iloc[:, 0] = funds.iloc[:, 0].str.upper()  # capitalise fund codes
     funds.columns = ["Funds"]  # rename column
-    fund_list = funds.iloc[:, 0].tolist()  # list of funds to be included in the report
+    fund_list = funds.iloc[:, 0].tolist()
 
-    df = pd.read_excel(
-        pthPy, sheet_name="arc", usecols="S", nrows=8
-    )  # date and MV/EE selection
+    df = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows=8)
+    # date and MV/EE selection
     k = df.iloc[1, 0]
-    rptDate = k if k == k else prior_month_end(datetime.today().date())
+    rptDate = k.date() if k == k else prior_month_end(datetime.today().date())
 
     syth = df.iloc[7, 0]
 
     s = "s" if len(funds) != 1 else ""
     print(
-        f"Schedule IB report{s} as at {rptDate.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n {(', ').join(fund_list)}\n"
+        f"Schedule IB report{s} as at {rptDate.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n {fund_list}\n"
     )
     # print('\n', f'{timediff(start_time, time.time())}: getting the Schedule IB report inputs with pd.read_excel() completed')
 
@@ -173,14 +174,15 @@ def open_wb():
     start_time = time.time()
     # print('Opening the SchIB template as a workbook ...')
 
-    if template_with_sheets == 1:
-        wb = openpyxl.load_workbook(pth_r28_lmts)  # open the Reg Schedule IB template
-        del wb["Static"]  # delete unneccesary sheets from the template workbook
-        del wb["Tbl2"]  # delete unneccesary sheets from the template workbook
-        del wb["CS1"]  # delete unneccesary sheets from the template workbook
-    else:
-        wb = openpyxl.load_workbook(pth_schib_tmpl)  # open the Reg Schedule IB template
-        # pth_schib_tmpl = pthW + r"\!Reg28 SchIB.xlsm"
+    # if template_with_sheets == 1:
+    #     wb = openpyxl.load_workbook(pth_r28_lmts)  # open the Reg Schedule IB template
+    #     del wb["Static"]  # delete unneccesary sheets from the template workbook
+    #     del wb["Tbl2"]  # delete unneccesary sheets from the template workbook
+    #     del wb["CS1"]  # delete unneccesary sheets from the template workbook
+    # else:
+    #     wb = openpyxl.load_workbook(pth_r28_lmts)  # open the Reg Schedule IB template
+
+    wb = openpyxl.load_workbook(pth_schib_tmpl)  # open the Reg 28 Schedule IB template
     sh = wb["SchIB"]  # assign the sheet to be worked on
     sh.title = f"{fund} SchIB {rptDate.strftime('%d%b%Y')}"  # set tab name of IB sheet
 
@@ -582,7 +584,9 @@ get_inputs()
 # loop
 doneReg28 = []
 noReg28 = []
+print(f"Compiling the Regulation 28 Schedule IB reports as at {rptDate.strftime('%d%b%Y')} ...")
 for fund in tqdm(funds["Funds"]):
+    # print(f"{fund}")
     if os.path.isfile(
         os.path.join(pthReports, f"{fund} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx")
     ):
@@ -627,6 +631,8 @@ time for {len(funds) - len(noReg28)} \
 fund{'' if len(funds) - len(noReg28) == 1 else 's'}"
 )
 
-print("\n\n##########################")
-print("#      END r28_ib.py     #")
-print("##########################\n\n")
+print("\n\n#################################")
+print("#                               #")
+print("#         END r28_ib.py         #")
+print("#                               #")
+print("#################################\n\n")

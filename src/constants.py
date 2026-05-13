@@ -37,7 +37,7 @@ pg_co_nb = pth_gitrepo + r"/pgf_compiling.ipynb"
 prp = pth_gitrepo + r"/prp.py"
 
 # local folders
-pth_dl = os.path.join(Path.home(), "Downloads")  # or Path.home() / "Downloads"
+pth_dl = Path.home() / "Downloads"
 pthLOCAL = os.path.join(Path.home(), "Documents", "DervFiles")
 
 # network folders
@@ -56,6 +56,7 @@ pthMed = pthCmp + r"\Medical Schemes"
 pthPtl = pthCmp + r"\Breaches\Portal"
 pth_BX = pthCmp + r"\Mcaps"
 pth_m_reports = pthCmp + r"\Reporting Requirements\Monthly Reports"
+ptl_trades = pthCmp + r"\Portal_Trades"
 pthClients = pthPIM + r"\Investment Operations\Segregated Clients\Active Clients"
 pth_EC = (
     pthClients
@@ -72,6 +73,7 @@ pth_tbl2_tmpl = pthW + r"\!Reg28_Tbl2.xlsx"
 pth_schib_tmpl = pthW + r"\!Reg28_SchIB.xlsx"
 derv_tmpl = pthW + r"\derv_template2.xlsx"
 pth_tbl2_static = pthW + r"\!Reg28 SchIB.xlsm"  # for r28_t2.py
+pth_fx = pthW + r"\fx_rates.csv"
 pthCLNs = pthCmp + r"\MCaps\CLNs.xlsx"
 pth_me17 = pthCmp + r"\Reporting Requirements\Monthly Reports\MonthEnd17.xlsm"
 frcv_file = pthCmp + r"\Daily\Free Cover.xlsm"
@@ -81,6 +83,7 @@ pthMedCirc06 = pthMed + r"\20220117 MSA Circ6 Categorisations.xlsx"
 pthMedCirc12 = pthMed + r"\20230317 MSA Circ12 Categorisations.xlsx"
 pthMedCirc11 = pthMed + r"\20250225 MSA Circ11of2024 Categorisations.xlsx"
 pthMedCirc = pthMed + r"\20250224 MSA Circ3of2025 Categorisations.xlsx"
+pthMedCirc2026 = pthMed + r"\20260302 MSA Circ7of2Mar2026 Categorisations.xlsx"
 pthDvSmry = pthCmp + r"\Daily\derv_summary.xlsx"
 pth_hdg_tmpl = pthHdg + r"\PGF Share Class Hedges.xlsm"
 pth_instr = pthCmp + r"\Portal\Instruments.xlsx"

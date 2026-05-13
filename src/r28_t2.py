@@ -6,7 +6,9 @@
 # ### To generate multiple Reg 28 Table 2 reports
 
 print("\n\n##############################################")
+print("#                                            #")
 print("#              START r28_t2.py               #")
+print("#                                            #")
 print("##############################################\n\n")
 
 # libraries, libraries!
@@ -133,11 +135,13 @@ for fund in tqdm(nl["Fund"]):
         usecols="A:K",
     ).dropna(subset=["Entity Name"])  # reg categorised sheet
     shtr["Tbl2"] = shtr.apply(
-        lambda row: t1t2[
-            t1t2["Reg 28 Classification"] == row["Reg 28 Classification"]
-        ].iat[0, 1]
-        if row["Infrastructure"] == "11(b)"
-        else float("nan"),
+        lambda row: (
+            t1t2[t1t2["Reg 28 Classification"] == row["Reg 28 Classification"]].iat[
+                0, 1
+            ]
+            if row["Infrastructure"] == "11(b)"
+            else float("nan")
+        ),
         axis=1,
     )  # add a translated Table 2 column
     shtr["Instr"] = shtr.apply(
@@ -397,9 +401,11 @@ for fund in tqdm(nl["Fund"]):
     # print(f' Tbl2 {fund}, {timediff(start_time, time.time())}')
 
 print(
-    f"{len(nl['Fund'])} Reg 28 Table 2 reports for {rptDate.strftime('%d%b%Y')} completed and stored here P:\Working Folders\Hilton\W\Reg_Tests"
+    f"{len(nl['Fund'])} Reg 28 Table 2 reports for {rptDate.strftime('%d%b%Y')} completed and stored in the test folder"
 )
 
 print("\n\n##############################################")
+print("#                                            #")
 print("#               END r28_t2.py                #")
+print("#                                            #")
 print("##############################################\n\n")

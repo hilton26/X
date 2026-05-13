@@ -4,7 +4,7 @@
 # # Downloading PGF UCITS Hedge Share Class NAVs and Holdings
 
 print("\n\n###################################")
-print("# START 1/2 pgf_downloading.ipynb #")
+print("# START 1/2 pgf_downloading.py#")
 print("###################################\n\n")
 
 # get input data off source sheet
@@ -107,5 +107,5 @@ print(f"  {parN_nm} which {'exists' if os.path.exists(parN_nm) else 'does not ex
 print(f"  {utP_nm} which {'exists' if os.path.exists(utP_nm) else 'does not exist'}")
 
 print("\n\n###################################")
-print("#  END 1/2 pgf_downloading.ipynb  #")
+print("#  END 1/2 pgf_downloading.py  #")
 print("###################################\n\n")

@@ -24,6 +24,7 @@ from tqdm import tqdm
 from constants import (
     pthEXPORTS,
     pthPy,
+    pth_dl,
     pthMandates,
     pthOverdrafts,
     pthSttlmnt,
@@ -276,7 +277,7 @@ print("Writing the dataframe to a sheet ...")
 # dataframe the PARN and Derv reports from the local Downloads folder
 fPARN = os.path.join(
     pth_dl,
-    f"PARN ({len(fill)}) {rptDate.strftime('%d%b%Y')}.csv",
+    f"PARN ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
 )
 wbH = pd.read_csv(fPARN)
 fDE = os.path.join(

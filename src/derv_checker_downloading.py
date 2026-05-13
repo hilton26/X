@@ -26,6 +26,12 @@ from pathlib import Path
 from constants import pthPy, pthEXPORTS, pth_dl, pthLOCAL
 from utilities import timediff, osprey, prior_working_day
 
+fund_load = 200  # max number of funds to load in one go from osprey;
+# if more than this, the list of funds is split into two halves
+# and loaded in two separate calls to osprey() with the
+# "half1" and "half2" options, and then the two halves #
+# are combined into one dataframe and saved as a csv file in the Downloads folder
+
 # get report date and selected summary sheet option
 df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
     subset=[0]
@@ -46,15 +52,14 @@ print("Deriving file names ...")
 
 filename = os.path.join(pthEXPORTS, f"Derv {rptDate.strftime('%d%b%Y')}.xlsx")
 fPARN = os.path.join(
-    Path.home(),
-    "Downloads",
+    pth_dl,
     f"PARN ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
 )
 fDE = os.path.join(
-    Path.home(),
-    "Downloads",
+    pth_dl,
     f"DERV ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
 )
+
 
 hlf = int(len(full) / 2)
 half1 = (",").join(full[:hlf])
@@ -71,15 +76,37 @@ print(
     f" {funds}",
     "\n",
 )
-print(f" {'No' if summ_yn == 'No' else 'A'} summary sheet is required", "\n")
+
+print(
+    f"Expected file names:\n   {derv_name}\n   {full_name}\n   {half1_name}\n   {half2_name}\n"
+)
 
 print(f"{timediff(start_time, time.time())} deriving file names", "\n")
+
+print(f" {'No' if summ_yn == 'No' else 'A'} summary sheet is required", "\n")
+
+# download derivative metrics
+start_time = time.time()
+print("Downloading and then saving derivative data ...")
+
+# check if the file was already downloaded before running osprey()
+if os.path.isfile(os.path.join(pth_dl, derv_name)):
+    print(f"  {derv_name} already exists")
+    pass
+else:
+    osprey("derv", funds, rptDate, rptDate, "", "csv")
+
+print(
+    f"{timediff(start_time, time.time())} downloading and then \
+saving derivative data\n"
+)
+
 
 # get the fund holdings in "portfolio analytics review - new" format
 start_time = time.time()
 print("Downloading and then saving holdings data ...")
 
-if len(full) > 100:  # if more than 100 funds are in the list ...
+if len(full) > fund_load:  # if more than 100 funds are in the list ...
     # ... get holdings for the first half of funds in the list
     start_time_1 = time.time()
     print(f"  ... downloading first of two subsets of holdings: {half1_name}")
@@ -153,21 +180,6 @@ print(
 saving holdings data\n"
 )
 
-# download derivative metrics
-start_time = time.time()
-print("Downloading and then saving derivative data ...")
-
-# check if the file was already downloaded before running osprey()
-if os.path.isfile(os.path.join(pth_dl, derv_name)):
-    print(f"  {derv_name} already exists")
-    pass
-else:
-    osprey("derv", funds, rptDate, rptDate, "", "csv")
-
-print(
-    f"{timediff(start_time, time.time())} downloading and then \
-saving derivative data\n"
-)
 
 print("\n Expected downloads:")
 print(f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}")
@@ -186,5 +198,5 @@ print(
 )
 
 print("\n\n##########################################")
-print("#  END 1/4 derv_cjhecker_downloading.py  #")
+print("#  END 1/4 derv_checker_downloading.py  #")
 print("##########################################\n\n")

@@ -10,9 +10,11 @@
 # close the Excel dialogue box and run this script again.')
 
 
-print("\n\n#######################")
-print("# START 1/3 issuers_1 #")
-print("#######################\n\n")
+print("\n\n#####################################")
+print("#                                   #")
+print("#       START 1/3 issuers_1.py      #")
+print("#                                   #")
+print("#####################################\n\n")
 
 # libraries, libraries!
 print("Importing libraries for issuers_1 ...\n")
@@ -786,6 +788,8 @@ print(
     f"\n{timediff(start_time_issuers_1, time.time())} ISSUERS_1, _2, and _3 COMPLETED \n==================="
 )
 
-print("\n\n#######################")
-print("#  END 1/3 issuers_1  #")
-print("#######################\n\n")
+print("\n\n######################################")
+print("#                                    #")
+print("#         END 1/3 issuers_1.py       #")
+print("#                                    #")
+print("######################################\n\n")

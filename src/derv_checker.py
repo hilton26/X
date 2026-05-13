@@ -21,7 +21,7 @@ import os
 from pathlib import Path
 import pandas as pd
 import subprocess
-from constants import pthPy, pthEXPORTS, frcv_file, pthDaily, dc_do, dc_co, dc_su, dc_fr
+from constants import pthPy, pthEXPORTS, frcv_file, dc_do, dc_co, dc_su, dc_fr
 from utilities import timediff, prior_working_day
 
 

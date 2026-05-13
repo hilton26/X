@@ -39,8 +39,8 @@ print(fnds_)
 df1 = pd.read_excel(pthPy, sheet_name="arc", usecols="AB")
 df1
 rpt_type = df1.iloc[4, 0]
-date_from = df1.iloc[0, 0]
-date_to = df1.iloc[2, 0]
+date_from = df1.iloc[2, 0]
+date_to = df1.iloc[0, 0]
 ext = df1.iloc[5, 0]
 
 # gather inputs

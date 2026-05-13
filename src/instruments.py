@@ -15,7 +15,7 @@ import os
 import json
 from tqdm import tqdm
 from pathlib import Path
-from constants import ptl_login, pth_dl, p_al, p_xe, ptl_instr, pth_instr
+from constants import ptl_login, pth_dl, ptl_instr, pth_instr
 from utilities import timediff
 
 # (1) import the selenium suite of tools

@@ -50,7 +50,7 @@ start_time = time.time()
 print("Dataframing the lookthrough holdings ...\n")
 
 # pattern2 = re.compile(fr"^R28I.*31Dec2025\.csv$")
-pattern2 = re.compile(fr"^R28I.*{rptDate.strftime('%d%b%Y')}\.csv$")
+pattern2 = re.compile(rf"^R28I.*{rptDate.strftime('%d%b%Y')}\.csv$")
 folder = Path(pth_dl)
 matching_files = [
     f.name for f in folder.iterdir() if f.is_file() and pattern2.match(f.name)
@@ -65,8 +65,8 @@ for matching_file in matching_files:
 holdings = holdings.iloc[:, :9]
 
 # determine which fund holdings have not been downloaded
-list_arc = df1.iloc[:,0].unique()
-list_holdings = holdings.iloc[:,0].unique()
+list_arc = df1.iloc[:, 0].unique()
+list_holdings = holdings.iloc[:, 0].unique()
 diff_funds = [item for item in list_arc if item not in list_holdings]
 diff_funds
 s = "'s" if len(diff_funds) == 1 else "s'"
@@ -112,8 +112,8 @@ else:
 navs = pd.read_csv(navs_fln)
 
 # determine which fund NAVs have not been downloaded
-list_arc  =  df1.iloc[:,0].unique()
-list_navs = navs.iloc[:,2].unique()
+list_arc = df1.iloc[:, 0].unique()
+list_navs = navs.iloc[:, 2].unique()
 diff_navs = [item for item in list_arc if item not in list_navs]
 diff_navs
 s = "'s" if len(diff_navs) == 1 else "s'"
@@ -229,7 +229,7 @@ download and merge lookthroughs\n",
 )
 
 # call the classifier function
-r_classifier("r28",lt_name, rptDate):
+r_classifier("r28", lt_fname, rptDate)
 
 print("\n\n#######################")
 print("#   END lt_merge.py   #")

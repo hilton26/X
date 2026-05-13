@@ -173,7 +173,7 @@ def property(txt):
     import re
     from re import search
 
-    pattern = "PROPERTY|PROPERTIES| PROP|REALTY| REAL| ESTATE|REIT|ATTACQ|BURSTONE| PROP|MAS PLC|NEPI ROCKCASTLE|OCTODEC|FAIRVEST"
+    pattern = r"\b(\sREAL\s|PROPERT|REALTY|\sESTATE|REIT|ATTACQ|BURSTONE|MAS PLC|NEPI ROCKCASTLE|OCTODEC|FAIRVEST|HYPROP)\b"
     if re.search(pattern, str(txt).upper()):
         return "P"
 
@@ -183,6 +183,20 @@ def property(txt):
 # property(txt)
 
 # utility function to save downloaded file with reporting date in cell 'J1'
+
+
+def fnd(txt):
+    import re
+    from re import search
+
+    pattern = r"\b(?:FUND(?!\s*MANAGE)|UCIT|ETF|ISHARES)\b"
+    if re.search(pattern, str(txt).upper()):
+        return "f"
+
+
+# ### TEST
+# txt = 'epic fund managers'
+# property(txt)
 
 
 def dater(folder_path, fund_name, dte):
