@@ -10,11 +10,12 @@
 # close the Excel dialogue box and run this script again.')
 
 
-print("\n\n#####################################")
-print("#                                   #")
-print("#       START 1/3 issuers_1.py      #")
-print("#                                   #")
-print("#####################################\n\n")
+print("\n\n#################################")
+print("#                               #")
+print("#      START issuers_1.py       #")
+print("#                               #")
+print("#################################\n\n")
+
 
 # libraries, libraries!
 print("Importing libraries for issuers_1 ...\n")
@@ -34,17 +35,15 @@ import re  # for regex
 from re import search  # for regex
 from datetime import datetime  # for script run durations
 import os  # for BESA folder contents
-import math  # to use isnan()
+import sys
 from tqdm import tqdm
 import subprocess
 from constants import (
     pthPy,
-    pthW,
     pthBESA,
-    pthCmp,
     pth_struct,
     pthCLNs,
-    pthMedCirc,
+    pthMedCirc2026,
     pthSttlmnt,
     pthTest,
     yll,
@@ -52,29 +51,11 @@ from constants import (
     issuers_2,
     issuers_3,
 )
-from utilities import timediff, property
-
+from utilities import timediff
 
 print(f" {timediff(start_time, time.time())} importing libraries for issuers_1\n")
 
-df_check = pd.read_excel(pthPy, sheet_name="arc", usecols="V", nrows=7)
-url = df_check.iloc[6, 0].replace('"', "")
-rpt = df_check.iloc[2, 0]
-if url == url:  # ... if so, use the py_reports url ...
-    py_input = pd.read_excel(url, engine="openpyxl")
-    if isinstance(list(py_input)[9], str):
-        rptDate = datetime.strptime(list(py_input)[9], "%d %b %Y")
-    else:
-        rptDate = list(py_input)[9]
-else:  # ... prompt for a valid url
-    print('Please provide a valid URL in cell "V8" of the "arc" tab')
-
-fnds = py_input["Entity Name"].unique()
-funds = (", ").join(fnds)
-s = "" if len(fnds) == 1 else "s"
-print(f"{rptDate.strftime('%d %b %Y')} report for {len(fnds)} fund{s}:\n {funds}\n")
-
-# (1) read in the lookthrough holdings file, from the 'classifier' sheet of py_reports.xlsm, as a dataframe
+# (1) read in the lookthrough holdings file, from the 'arc' sheet of py_reports.xlsm, as a dataframe
 
 start_time = time.time()
 print("Reading in classifier input file ...")
@@ -84,13 +65,17 @@ df_check = pd.read_excel(pthPy, sheet_name="arc", usecols="V", nrows=7)
 url = df_check.iloc[6, 0].replace('"', "")
 rpt = df_check.iloc[2, 0]
 if url == url:  # ... if so, use the py_reports url ...
-    py_input = pd.read_excel(url, engine="openpyxl")
+    # py_input = pd.read_excel(url, engine = 'openpyxl', usecols = 'A:J')
+    # py_input = pd.read_excel(url, sheet_name = 'All', usecols = 'A:J')
+    py_input = pd.read_excel(url, usecols="A:J")
     if isinstance(list(py_input)[9], str):
         rptDate = datetime.strptime(list(py_input)[9], "%d %b %Y")
     else:
         rptDate = list(py_input)[9]
 else:  # ... prompt for a valid url
-    print('Please provide a valid URL in cell "V8" of the "arc" tab')
+    print('Please provide a valid URL in cell "L2" of the "classifier" tab')
+
+print(f" {url if isinstance(url, str) else 'No url to look-through holdings'}\n")
 
 fnds = py_input["Entity Name"].unique()
 funds = (", ").join(fnds)
@@ -98,11 +83,10 @@ s = "" if len(fnds) == 1 else "s"
 print(
     f"{rptDate.strftime('%a %d %b %Y')} instrument classifications for {len(fnds)} fund{s}:\n {funds}"
 )
-print(f" {url if isinstance(url, str) else 'No url to look-through holdings'}\n")
 
 # get BESA data
 besa_fnames = [
-    int(s[re.search("\d{8}", s).span()[0] : re.search("\d{8}", s).span()[0] + 8])
+    int(s[re.search(r"\d{8}", s).span()[0] : re.search(r"\d{8}", s).span()[0] + 8])
     for s in os.listdir(pthBESA)
     if "." in s
 ]
@@ -123,7 +107,7 @@ print(f"\n {timediff(start_time, time.time())} reading in classifier input file\
 # get input data
 start_time = time.time()
 print(
-    "Reading in input data incl regex, CLNs, med schemes, settlement, BESA, accruals, and margins ..."
+    "Reading in input data incl regex, CLNs, med schemes, settlement, BESA, accruals, realty, and margins ..."
 )
 
 res = list(filter(lambda x: str(besa_fdate) in x, os.listdir(pthBESA)))[0]
@@ -146,11 +130,21 @@ accr = pd.read_excel(pth_struct, sheet_name="accr", usecols=["accruals"]).dropna
 fnd_typ = pd.read_excel(pth_struct, sheet_name="fnd", usecols=["description"]).dropna()
 marg = pd.read_excel(pth_struct, sheet_name="accr", usecols=["margins"]).dropna()
 issrgx = pd.read_excel(
-    pth_struct, sheet_name="issuers", usecols=["description", "id", "name"]
-).dropna(subset=["name"])
+    pth_struct,
+    sheet_name="issuers",
+    usecols=[
+        "description",
+        "id",
+        "issuer name",
+    ],
+).dropna(subset=["issuer name"])
 indx1 = pd.read_excel(
-    pth_struct, sheet_name="issuers", usecols=["description", "name", "ticker"]
-).dropna(subset=["name"])
+    pth_struct, sheet_name="issuers", usecols=["description", "issuer name", "ticker"]
+).dropna(subset=["issuer name"])
+bx_re = pd.read_excel(
+    pth_struct, sheet_name="issuers", usecols=["issuer name", "property"]
+).dropna(subset=["issuer name"])
+realty = bx_re[bx_re["property"] == "P"].drop("property", axis=1).reset_index(drop=True)
 bond_data = pd.read_excel(
     pth_struct, sheet_name="guar", usecols=["Bond Code", "Guarantee Type"]
 ).dropna()  # govt guarantee
@@ -160,12 +154,12 @@ clns = pd.read_excel(
     usecols=["Code", "CLN?", "Counterparty Long Name", "Issuer Long Name"],
 ).dropna(subset=["Code"])
 med_circ = pd.read_excel(
-    pthMedCirc, sheet_name="ListedDebt&EquityDec2023", usecols=["Code", "2024Circ11"]
-).dropna(subset=["Code"])
+    pthMedCirc2026, sheet_name="ListedDebtDec2025", usecols=["Bond Code", "2026Circ7"]
+).dropna(subset=["Bond Code"])
 sttlmnt = pd.read_excel(
     pthSttlmnt, sheet_name="Sttlmnt", usecols=["Fund", "Custodian", "SAFEX"]
 ).dropna(subset=["Fund"])
-indx = indx1[indx1["ticker"] == "Indices"].drop("ticker", axis=1).reset_index(drop=True)
+indx = indx1[indx1["ticker"] == "Index"].drop("ticker", axis=1).reset_index(drop=True)
 
 accr_list = [
     x for e in accr.values.tolist() for x in e
@@ -173,26 +167,44 @@ accr_list = [
 margin_list = [x for e in marg.values.tolist() for x in e]
 
 print(
-    f" {timediff(start_time, time.time())} reading in input data incl regex, CLNs, med schemes, settlement, BESA, accruals, and margins\n"
+    f" {timediff(start_time, time.time())} reading \
+in input data incl regex, CLNs, med schemes, \
+settlement, BESA, accruals, realty, and margins\n"
 )
+
 
 # 'descr' + 'id' columns - https://stackoverflow.com/questions/19377969/combine-two-columns-of-text-in-pandas-dataframe
 start_time = time.time()
 print(
-    'Joining "description" and "id" columns from the "issuers" tab of pth_struct.xlsm into a dataframe ...'
+    'Joining "description" and "id" columns from \
+the "issuers" tab of pth_struct.xlsm into a dataframe ...'
 )
 
-issrgx["descid"] = issrgx[["description", "id"]].astype(str).agg("|".join, axis=1)
+# convert "description" and "id" columns to string type and join them with a pipe delimiter
+cols_to_convert = ["description", "id"]
+for col in cols_to_convert:
+    issrgx[col] = issrgx[col].fillna("").astype(str)
+
+print(issrgx[["description", "id"]].info())
+
+# issrgx["descid"] = issrgx[["description", "id"]].agg("|".join, axis=1)
+issrgx["descid"] = issrgx[["description", "id"]].agg(
+    lambda row: "|".join(v for v in row if v), axis=1
+)
 # issrgx.drop(['id', 'description'], axis = 1, inplace = True)
 
 print(
-    f' {timediff(start_time, time.time())} joining "description" and "id" columns from the "issuers" tab of pth_struct.xlsm into a dataframe\n'
+    f' {timediff(start_time, time.time())} joining \
+"description" and "id" columns from the "issuers" \
+tab of pth_struct.xlsm into a dataframe\n'
 )
+
 
 # Determine funds with nil effective exposure
 start_time = time.time()
 print(
-    "Determining funds with zero effective exposure and funds with no settlement account"
+    "Determining funds with zero effective exposure \
+and funds with no settlement account"
 )
 
 names = fnds
@@ -202,7 +214,8 @@ for name in names:
         zero_EE.append(name)
 
 print(
-    f" {len(zero_EE)} funds with empty effective exposure column: \n  {(', ').join(list(zero_EE))} \n"
+    f" {len(zero_EE)} funds with empty effective exposure \
+column: \n  {(', ').join(list(zero_EE))} \n"
 )
 
 # confirm all funds have a settlement bank account by merging df and sttlmnt
@@ -225,7 +238,12 @@ print(
     f"{timediff(start_time, time.time())} determining funds with zero effective exposure and funds with no settlement account \n"
 )
 
-# create functions
+
+# In[7]:
+
+
+# create text pattern functions
+
 start_time = time.time()
 print("Setting up functions ...")
 
@@ -237,13 +255,11 @@ def cln(txt):
         return None
 
 
-def fnd(txt):
-    for pattern in fnd_type["description"]:
-        if re.search(pattern, str(txt).upper()):
-            return fnd_type.loc[fnd["description"] == pattern].iat[
-                0, 1
-            ]  # note 'break' within the for loop
-            break
+# def fnd(txt):
+#     for pattern in fnd_type['description']:
+#         if re.search(pattern, str(txt).upper()):
+#             return fnd_type.loc[fnd['description'] == pattern].iat[0,1] # note 'break' within the for loop
+#             break
 
 
 # function to identify FRNs and NCDs
@@ -260,6 +276,98 @@ def ilb(txt):
         return 1
 
 
+# function to identify funds
+def fnd(txt):
+    import re
+    from re import search
+
+    pattern1 = r"\b(?:FUND(?!\s*MANAGE)|FUND(?!S)|UCIT|ETF|ISHARES)\b"
+    patternc = r"\b(PHYSICAL GOLD|GOLD ETC|COMMODITY|PHYSICAL SILVER|SILVER ETC|PLATINUM|PALLADIUM)\b"
+    patternm = r"\b(MONEY)\b"
+    patternd = r"\b(BONDS|$ TIP|$TIP|DURATION|YIELD|INCOME|INTEREST|POSITIVE RETURN)\b"
+    patterne = r"\b(EQUITY|WORLD|FEEDER|\sPLUS\s|MSCI|SMALL CAP|LARGE CAP|GLOBAL|OPPORTUNITY|BIN YUAN|BALANCED|INTL)\b"
+    patternp = r"\b(\sREAL\s|REALTY|REIT|PROPERTY|REAL ESTATE|HOMES|FAIRVEST|HYPROP)\b"
+    if re.search(pattern1, str(txt).upper()) and re.search(patternc, str(txt).upper()):
+        return "fc"
+    elif re.search(pattern1, str(txt).upper()) and re.search(
+        patternm, str(txt).upper()
+    ):
+        return "fm"
+    elif re.search(pattern1, str(txt).upper()) and re.search(
+        patternd, str(txt).upper()
+    ):
+        return "fd"
+    elif re.search(pattern1, str(txt).upper()) and re.search(
+        patterne, str(txt).upper()
+    ):
+        return "fe"
+    elif re.search(pattern1, str(txt).upper()) and re.search(
+        patternp, str(txt).upper()
+    ):
+        return "fp"
+    else:
+        return None
+
+
+def property(txt):
+    import re
+    from re import search
+
+    pattern = r"\b(\sREAL\s|REALTY|REIT|PROPERTY|REAL ESTATE|HOMES|FAIRVEST|HYPROP)\b"
+    if re.search(pattern, str(txt).upper()):
+        return "p"
+
+
+# function to discern property tickers; ## Claude, 9 Mar 2026
+def classify_re(row):
+    isin_match = row["ISIN"] in isins["ISIN"].values
+    return "P" if isin_match or name_match else np.nan
+
+
+# function to identify pribvate equity funds
+def pef(txt):
+    import re
+    from re import search
+
+    pattern1 = r"\b(PRIVATE EQUITY)\b"
+    pattern2 = r"\b(PRIVATE EQUITY FUND OF FUNDS|PRIVATE FOF)\b"
+    if re.search(pattern1, str(txt).upper()):
+        return "pef"
+    elif re.search(pattern2, str(txt).upper()):
+        return "pefof"
+    else:
+        return None
+
+
+# function to identify pribvate equity funds
+def hf(txt):
+    import re
+    from re import search
+
+    pattern1 = r"HEDGE FUND(?! OF FUNDS)"
+    pattern2 = r"\b(HEDGE FUND OF FUNDS|HEDGE FOF)\b"
+    if re.search(pattern1, str(txt).upper()):
+        return "hf"
+    elif re.search(pattern2, str(txt).upper()):
+        return "hfof"
+    else:
+        return None
+
+
+def commodity(txt):
+    import re
+    from re import search
+
+    pattern1 = r"\b(?:PHYSICAL GOLD|GOLD ETC)\b"
+    pattern2 = r"\b(?:COMMODITY|PHYSICAL SILVER|SILVER ETC|PLATINUM|PALLADIUM)\b"
+    if re.search(pattern1, str(txt).upper()):
+        return "au"
+    elif re.search(pattern2, str(txt).upper()):
+        return "xu"
+    else:
+        return None
+
+
 # function to find index
 def inx(txt):
     if (indx["description"].eq(txt)).any():
@@ -274,9 +382,7 @@ def inx(txt):
 def mrg(
     txtA, txtB
 ):  # https://stackoverflow.com/questions/13331698/how-to-apply-a-function-to-two-columns-of-pandas-dataframe
-    pattern1 = (
-        "\sMARGIN|(?!\d\d)MARG(?!\d\d)"  # pattern to test txtA in 'i Issue Name' column
-    )
+    pattern1 = r"\sMARGIN|(?!\d\d)MARG(?!\d\d)"  # pattern to test txtA in 'i Issue Name' column
     pattern2 = "VARMAR"  # pattern to test txtB in 'Primary Asset ID' column
     if re.search(pattern1, str(txtA).upper()) or re.search(
         pattern2, str(txtB).upper()
@@ -310,8 +416,7 @@ def besa(
         return "B"
 
 
-# function to identify strings of text starting with 3 or 4 capital
-# letters and ending with two or three digits
+# function to identify strings of text starting with 3 or 4 capital letters and ending with two or three digits
 # to identify candidate BESA-listed securities
 def besa_maybe(txt):
     pattern = r"^[A-Z]{3,4}\d{2,3}$"
@@ -346,12 +451,12 @@ def term(date_string):
 # function to assign med scheme category based on current Circular 11 of 2024 from the CMS
 def medcirc(txt):
     if (
-        med_circ["Code"].eq(txt).any()
+        med_circ["Bond Code"].eq(txt).any()
     ):  # https://www.statology.org/pandas-check-if-column-contains-string/
-        return med_circ.loc[med_circ["Code"] == txt].iat[0, 1]
+        return med_circ.loc[med_circ["Bond Code"] == txt].iat[0, 1]
 
 
-# utility function to check if a string contains an nelement in a given list
+# utility function to check if a string contains an element in a given list
 def res(
     t_list, t_string
 ):  # https://www.geeksforgeeks.org/python-test-if-string-contains-element-from-list/
@@ -385,9 +490,11 @@ def datex(txt):
 def issuer_did(txt):
     for pattern in issrgx["descid"]:
         if re.search(pattern, str(txt).upper()):
-            return issrgx.loc[issrgx["descid"] == pattern].iat[
-                0, 2
-            ]  # note 'break' within the for loop
+            return (
+                issrgx.loc[issrgx["descid"] == pattern]
+                .reset_index(drop=True)
+                .loc[0, "issuer name"]
+            )
             break
 
 
@@ -471,6 +578,10 @@ def dexin(txt):
 
 print(f" {timediff(start_time, time.time())} setting up functions", "\n")
 
+
+# In[8]:
+
+
 # function to assign an issuer: https://towardsdatascience.com/create-new-column-based-on-other-columns-pandas-5586d87de73d
 start_time = time.time()
 print("Setting up issuer identifier function ...")
@@ -479,9 +590,6 @@ print("Setting up issuer identifier function ...")
 def classify1(row):
     t = issuer_did(row["i Issue Name"])  # temp, so function only gets called once
     g = issuer_did(row["Primary Asset ID"])  # temp, so function only gets called once
-
-    # if   (clns['Code'].eq(row['Primary Asset ID'])).any():                # if cln is included in list then ...
-    #     return clns.loc[clns['Code'] == row['Primary Asset ID']].iat[0,1] # ... look up reference entity
 
     if cln(row["Primary Asset ID"]) == 1:  # if cln is included in list then ...
         return clns.loc[clns["Code"] == row["Primary Asset ID"]].iat[
@@ -520,6 +628,10 @@ print(
 # df
 # print(classify1(df.loc[0]))
 
+
+# In[9]:
+
+
 # (2) remove blank Market Value rows and zero-value Effective Exposure rows
 start_time = time.time()
 print("Removing NaN and zero value rows ...")
@@ -536,6 +648,10 @@ df_input = py_input[
     (round(py_input["End Market Value"], 2) != 0)
     | (round(py_input["Closing Exposure PA"], 2) != 0)
 ]
+
+# drop the last column
+df_input = df_input.drop(df_input.columns[9], axis=1)
+
 # delete rows where MV and EE are zero to two decimals
 print(
     f" {rowsNaN:,} NaN rows and {len(py_input) - len(df_input):,} zero effective exposure rows \
@@ -549,6 +665,10 @@ after["Diff"] = after["End Market Value"] - after["Closing Exposure PA"]
 # https://stackoverflow.com/questions/43102734/format-a-number-with-commas-to-separate-thousands
 
 print(f"{timediff(start_time, time.time())} removing NaN and zero value rows", "\n")
+
+
+# In[10]:
+
 
 # (3) change the 'Percentage of Market Value' column
 start_time = time.time()
@@ -578,17 +698,32 @@ print(
     "\n",
 )
 
+
+# In[11]:
+
+
 # (4) save 'df_input' dataframe including ALL funds as a workbook to be used later
 start_time = time.time()
-print('Saving "df_input" dataframe as a workbook ...')
+print('Saving "df_input" dataframe as a workbook called "yall" ...')
 
 with pd.ExcelWriter(yll, engine="xlsxwriter") as writer:
     df_input.to_excel(writer, index=False, sheet_name="all")  # assigned attributes
 writer.close()
 
 print(
-    f' {timediff(start_time, time.time())} saving "df_input" dataframe as a workbook\n'
+    f' {timediff(start_time, time.time())} saving "df_input" dataframe as a workbook called "yall"\n'
 )
+
+
+# In[12]:
+
+
+uniques = df_input.drop_duplicates(subset="Primary Asset ID", keep="first")
+print(list(uniques), uniques.shape)
+
+
+# In[13]:
+
 
 # (5) find unique instruments and identify their instrument attributes
 start_time = time.time()
@@ -613,26 +748,35 @@ uniques.reset_index(
 
 print(f" {len(uniques)} unique securities")
 
-print(f" {timediff(start_time, time.time())} isolating unique securities\n")
+print(f"   {timediff(start_time, time.time())} isolating unique securities\n")
+
+
+# In[14]:
+
 
 # (6) identify the unique instruments' attributes
 start_time = time.time()
 print("Appending instrument attributes to the unique securities ...")
 
-# uniques['fnd']            = uniques['i Issue Name'    ].map(fnd)          # NEW
-# uniques['CLN']            = uniques['i Issue Name'    ].map(cln)
+# add new columns to uniques dataframe
+uniques[["FundX", "PEFX", "HFX", "CommodityX"]] = None
+
+# uniques['fnd']        = uniques['i Issue Name'    ].map(fnd)         # NEW
+# uniques['CLN']        = uniques['i Issue Name'    ].map(cln)
 uniques["CLN"] = uniques["Primary Asset ID"].map(cln)
 uniques["FRN"] = uniques["i Issue Name"].map(frn)
 uniques["ILB"] = uniques["i Issue Name"].map(ilb)
 uniques["Date"] = uniques["i Issue Name"].map(datex)  # security maturity date
+uniques["FundX"] = uniques["i Issue Name"].map(fnd)
+uniques["PropertyX"] = uniques["i Issue Name"].map(property)
+uniques["PEFX"] = uniques["i Issue Name"].map(pef)
+uniques["HFX"] = uniques["i Issue Name"].map(hf)
+uniques["CommodityX"] = uniques["i Issue Name"].map(commodity)  # commodity
 uniques["MedCirc"] = uniques["Primary Asset ID"].map(medcirc)
-# uniques['MedCirc062022'] = uniques['Primary Asset ID'].map(medcirc062022)
-# uniques['MedCirc122023'] = uniques['Primary Asset ID'].map(medcirc122023)
 uniques["GovGuar"] = uniques["Primary Asset ID"].map(gvg)
 uniques["repo"] = uniques["Primary Asset ID"].map(repo)
 uniques["BESA"] = uniques["Primary Asset ID"].map(besa)
 uniques["BESA_MAYBE"] = uniques["Primary Asset ID"].map(besa_maybe)
-# uniques['margin']         = uniques.apply(mrg, axis = 1)
 uniques["margin"] = uniques.apply(
     lambda x: mrg(x["i Issue Name"], x["Primary Asset ID"]), axis=1
 )
@@ -645,12 +789,16 @@ print(
     f" {timediff(start_time, time.time())} appending instrument attributes to the unique securities\n"
 )
 
+
+# In[16]:
+
+
 # (7) identify issuers
 start_time = time.time()
 print(
     f"Identifying issuers over {len(uniques):,} unique securities \
 for {len(fnds)} fund{s} at {rptDate.strftime('%a %d %b %Y')} using \
-{len(issrgx['name'].dropna()):,} regex patterns ..."
+{len(issrgx['issuer name'].dropna()):,} regex patterns ..."
 )
 
 issuers = []
@@ -660,12 +808,11 @@ for index, row in tqdm(uniques.iterrows(), total=uniques.shape[0]):
 # add new 'Issuer' column
 uniques["Issuer"] = issuers
 
-print(
-    f" {timediff(start_time, time.time())} identifying issuers \
-over {len(uniques):,} unique securities for {len(fnds)} fund{s} \
-at {rptDate.strftime('%a %d %b %Y')} using \
-{len(issrgx['name'].dropna()):,} regex patterns\n"
-)
+print(f" {timediff(start_time, time.time())} identifying issuers\n")
+
+
+# In[24]:
+
 
 # (8) identify derivative counterparties for Reg 28 CS1 of 2023
 start_time = time.time()
@@ -674,6 +821,10 @@ print("Identifying derivative counterparties ...")
 uniques["Counterparty"] = uniques.apply(counterparty, axis=1)
 
 print(f" {timediff(start_time, time.time())} identifying derivative counterparties\n")
+
+
+# In[25]:
+
 
 # (9) identify securities with absent issuers
 start_time = time.time()
@@ -694,6 +845,10 @@ print(
     f" {timediff(start_time, time.time())} identifying securities with absent issuers\n"
 )
 
+
+# In[26]:
+
+
 # (10) write the dataframe to review it as a workbook
 start_time = time.time()
 print("Writing the dataframe to a sheet for review ...")
@@ -712,6 +867,10 @@ iss1_xl.close()
 print(
     f" {timediff(start_time, time.time())} writing the dataframe to a sheet for review\n"
 )
+
+
+# In[27]:
+
 
 # (11) prettify the sheets using openpyxl
 start_time = time.time()
@@ -766,6 +925,14 @@ print(
     f"\n {timediff(start_time_issuers_1, time.time())} ISSUERS_1 COMPLETED\n===============================\n"
 )
 
+
+print("\n\n###############################")
+print("#                             #")
+print("#      END issuers_1.py       #")
+print("#                             #")
+print("###############################\n\n")
+
+
 # (12) run issuers_2, and _3.ipynb if all securities have an assigned issuer, else open issuers_1.xlsx
 start_time = time.time()
 print(
@@ -777,19 +944,21 @@ print(
 )
 
 if (len(no_issuer.Issuer) == 0) and (len(no_CLN_issuer.CLN) == 0):
-    subprocess.run(["python", issuers_2])
-    subprocess.run(["python", issuers_3])
+    subprocess.run([sys.executable, issuers_2])  ## when running issuers_2.py
+    subprocess.run([sys.executable, issuers_3])  ## when running issuers_3.py
 else:
-    # excel.Workbooks.Open(r'P:\Working Folders\Hilton\W\Reg_Tests\issuers_1.xlsx')
     os.startfile(iss_1)
-    print("Check the issuers and CLNs in the \issuers_1.xlsx file")
+    print(r"Check the issuers and CLNs in the \issuers_1.xlsx file")
 
 print(
-    f"\n{timediff(start_time_issuers_1, time.time())} ISSUERS_1, _2, and _3 COMPLETED \n==================="
+    f"\n{timediff(start_time_issuers_1, time.time())} running issuers_1, _2, and _3.ipynb\n"
 )
 
-print("\n\n######################################")
-print("#                                    #")
-print("#         END 1/3 issuers_1.py       #")
-print("#                                    #")
-print("######################################\n\n")
+# os.startfile(iss_1)
+# os.startfile(iss_2)
+
+print("\n\n##########################################")
+print("#                                        #")
+print("#      END issuers_1, _2, and _3.py      #")
+print("#                                        #")
+print("##########################################\n\n")

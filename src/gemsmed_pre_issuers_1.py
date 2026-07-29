@@ -3,15 +3,12 @@
 
 # ## Compile GEMSMED weekly Reg 30 report
 
-# In[1]:
 
-
-print("###################################")
-print("# START 1/2 gemsmed_pre_issuers_1 #")
-print("###################################")
-
-
-# In[47]:
+print("\n\n###########################################")
+print("#                                         #")
+print("#     START 1/2 gemsmed_pre_issuers_1  X  #")
+print("#                                         #")
+print("###########################################\n\n")
 
 
 # import time
@@ -23,18 +20,17 @@ start_time_gemsmed_pre = start_time
 # libraries, libraries!
 from datetime import datetime
 import pandas as pd
+import numpy as np
 import os
 from pathlib import Path
-import shutil  # for creating folders and copying files
-from tqdm import tqdm, notebook  # notebook version of tqdm
 from constants import pthPy, pth_dl, pthLOCAL
 from utilities import prior_working_day, timediff, osprey, r_classifier
 
-print("Importing libraries to get GEMSMED_C holdings ...")
+print("Importing libraries to get fund holdings ...")
 # " ...any time you see a loop somewhere in your code in you can simply wrap it in either tdqm() or notebook.tqdm() in Jupyter"
 
 print(
-    f" {timediff(start_time, time.time())} importing libraries to get GEMSMED_C holdings",
+    f" {timediff(start_time, time.time())} importing libraries to get fund holdings",
     "\n",
 )
 
@@ -57,14 +53,11 @@ s = "" if len(df.iloc[:, 0]) == 1 else "s"
 print(
     f" {rptDate.strftime('%a %d %b %Y')} for {len(df.iloc[:, 0])} fund{s}:\n  {funds}"
 )
+name = funds if len(df.iloc[:, 0]) == 1 else "gmunu"
 
 # derive file names
-holds_nm = os.path.join(
-    pth_dl, f"R28I GEMSMEDC(1) {rptDate.strftime('%d%b%Y')}.{suffix}"
-)
-dervs_nm = os.path.join(
-    pth_dl, f"DERV GEMSMEDC(1) {rptDate.strftime('%d%b%Y')}.{suffix}"
-)
+holds_nm = os.path.join(pth_dl, f"R28I {name}(1) {rptDate.strftime('%d%b%Y')}.{suffix}")
+dervs_nm = os.path.join(pth_dl, f"DERV {name}(1) {rptDate.strftime('%d%b%Y')}.{suffix}")
 print(f"\nFiles expected:\n {holds_nm}\n {dervs_nm}")
 
 print(f"\n{timediff(start_time, time.time())} getting the report parameters", "\n")
@@ -78,7 +71,7 @@ print("Extracting and saving the fund holdings and derivatives ...\n")
 if os.path.exists(holds_nm):
     print(f"{holds_nm} exists")
 else:
-    osprey("r28i", funds, rptDate, rptDate, funds, suffix)
+    osprey("r28i", funds, rptDate, rptDate, name, suffix)
     if os.path.exists(holds_nm):
         print(f"{holds_nm} downloaded")
     else:
@@ -89,7 +82,7 @@ else:
 if os.path.exists(dervs_nm):
     print(f"{dervs_nm} exists")
 else:
-    osprey("derv", funds, rptDate, rptDate, funds, suffix)
+    osprey("derv", funds, rptDate, rptDate, name, suffix)
     if os.path.exists(dervs_nm):
         print(f"{dervs_nm} downloaded")
     else:
@@ -112,6 +105,7 @@ dervs = pd.read_csv(os.path.join(dervs_nm))
 
 # merge holdings and derivative values
 a = holds.merge(dervs, how="left", on="Primary Asset ID", suffixes=("", "_2"))
+# a = pd.concat([holds, dervs], ignore_index=True)
 
 # convert numerical columns from str to float
 start_time_conv = time.time()
@@ -143,7 +137,6 @@ print(f"Saving the file ...\n")
 
 # insert effective exposure values in closing exposure column
 # https://datascience.stackexchange.com/questions/56668/pandas-change-value-of-a-column-based-another-column-condition
-import numpy as np
 
 a["Closing Exposure PA"] = np.where(
     a["Effective Exposure"].isnull(), a["End Market Value"], a["Effective Exposure"]
@@ -153,6 +146,8 @@ a["Closing Exposure PA"] = np.where(
 a["Closing Exposure PA"] = np.where(
     a["Investment Type"] == "SYTH", -a["Closing Exposure PA"], a["Closing Exposure PA"]
 )
+
+print(a)
 
 # drop unneccesary columns
 columns_to_drop = [
@@ -181,7 +176,7 @@ a[a["Investment Type"].isin(show)]
 
 # save as an excel file
 a.to_excel(
-    os.path.join(pthLOCAL, f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
+    os.path.join(pthLOCAL, f"{name} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
     sheet_name="All",
     index=False,
 )
@@ -189,33 +184,33 @@ a.to_excel(
 print(f"Saving the file completed: {timediff(start_time, time.time())}")
 print(
     "\n",
-    os.path.join(pthLOCAL, f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
+    os.path.join(pthLOCAL, f"{name} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
     "\n",
 )
 
 # update py_reports.xlsm classifier sheet with downloaded gemsmed_c file location
 
 start_time = time.time()
-print(f"Updating the classifier sheet with downloaded gemsmed_c file location ...\n")
+print(f"Updating the classifier sheet with downloaded {name} file location ...\n")
 
 import xlwings as xw
 
 wb = xw.Book(pthPy)
 # ws                   = wb.sheets('classifier')
-# ws.range("L2").value = os.path.join(pthLOCAL, f'GEMSMEDC Reg28 {rptDate.strftime("%d%b%Y")}.xlsx')
+# ws.range("L2").value = os.path.join(pthLOCAL, f'{name} Reg28 {rptDate.strftime("%d%b%Y")}.xlsx')
 # ws.range("M1").value = 'Reg 28 and Reg 30 only' # alternative: 'CS1 format only'
 ws = wb.sheets("arc")
 ws.range("V4").value = "Reg 28 and Reg 30 only"  # alternative: 'CS1 format only'
 ws.range("V8").value = os.path.join(
-    pthLOCAL, f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"
+    pthLOCAL, f"{name} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"
 )
 wb.save()
 wb.close()
 
-# r_classifier('r28', os.path.join(pthLOCAL, f'GEMSMEDC Reg28 {rptDate.strftime("%d%b%Y")}.xlsx'), rptDate):
+# r_classifier('r28', os.path.join(pthLOCAL, f'{name} Reg28 {rptDate.strftime("%d%b%Y")}.xlsx'), rptDate):
 
 print(
-    f"Updating the classifier sheet with downloaded gemsmed_c file location completed: {timediff(start_time, time.time())}",
+    f"Updating the classifier sheet with downloaded {name} file location completed: {timediff(start_time, time.time())}",
     "\n",
 )
 print(
@@ -223,15 +218,17 @@ print(
         Path.home(),
         "Documents",
         "DervFiles",
-        f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx",
+        f"{name} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx",
     ),
     "\n",
 )
 print(
-    f"\n{timediff(start_time_gemsmed_pre, time.time())} roundtrip time to get GEMSMED_C holdings",
+    f"\n{timediff(start_time_gemsmed_pre, time.time())} roundtrip time to get {name} holdings",
     "\n",
 )
 
-print("\n\n###################################")
-print("#  END 1/2 gemsmed_pre_issuers_1  #")
-print("###################################\n\n")
+print("\n\n###############################################")
+print("#                                             #")
+print("#        END 1/2 gemsmed_pre_issuers_1  X     #")
+print("#                                             #")
+print("###############################################\n\n")

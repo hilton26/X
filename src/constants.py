@@ -26,6 +26,9 @@ dc_do = pth_gitrepo + r"/derv_checker_downloading.py"
 dc_co = pth_gitrepo + r"/derv_checker_compiling.py"
 dc_su = pth_gitrepo + r"/derv_checker_summarising.py"
 dc_fr = pth_gitrepo + r"/derv_checker_freecover.py"
+dc_fc = pth_gitrepo + r"/derv_checker_freec.py"
+dc_ct = pth_gitrepo + r"/derv_checker_cact.py"
+dc_tb = pth_gitrepo + r"/derv_checker_table.py"
 pg_do = pth_gitrepo + r"/pgf_downloading.py"
 pg_co = pth_gitrepo + r"/pgf_compiling.py"
 dc_do_nb = pth_gitrepo + r"/derv_checker_downloading.ipynb"
@@ -63,7 +66,8 @@ pth_EC = (
     + r"\Export Credit Insurance Corporation\ECICBAL\Reporting\Monthly Reports"
 )
 pth_PPSBAL = pthCmp + r"\Reporting Requirements\PIM PPSBAL"
-fldr_PManco = r"V:\Operations\Manco\Prescient Manco\Reg 30 Reports"
+fldr_PManco1 = r"V:\Operations\Manco\Prescient Manco\Reg 30 Reports"
+fldr_PManco2 = r"V:\Operations\Manco\Prescient Manco\Reg30"
 msci_zips = pthCmp + r"\Reporting Requirements\PIM PPSBAL\Zips"
 
 # files
@@ -71,6 +75,7 @@ pthPy = pthCmp + r"\Daily\py_reports.xlsm"
 pth_r28_lmts = pthW + r"\!Reg28Templates.xlsx"
 pth_tbl2_tmpl = pthW + r"\!Reg28_Tbl2.xlsx"
 pth_schib_tmpl = pthW + r"\!Reg28_SchIB.xlsx"
+derv_check_tmpl = pthDaily + r"\dervx.xlsx"
 derv_tmpl = pthW + r"\derv_template2.xlsx"
 pth_tbl2_static = pthW + r"\!Reg28 SchIB.xlsm"  # for r28_t2.py
 pth_fx = pthW + r"\fx_rates.csv"

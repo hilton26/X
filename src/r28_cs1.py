@@ -3,9 +3,11 @@
 
 # # Prepare CS1 Reports From PARN Download to Report Saving
 
-print("\n\n#######################")
-print("#   START r28_cs1.py  #")
-print("#######################\n\n")
+print("\n\n################################")
+print("#                              #")
+print("#     START r28_cs1.py   X     #")
+print("#                              #")
+print("################################\n\n")
 
 import time
 
@@ -17,12 +19,11 @@ print("Importing libraries ...")
 from datetime import datetime
 import pandas as pd
 import os
-from pathlib import Path
-from tqdm import tqdm, notebook
+import sys
+from tqdm import tqdm
 from constants import pthPy, pthTest, pth_dl, cs1_reporting
 from utilities import (
     timediff,
-    last_working_day,
     prior_month_end,
     osprey,
     batch_list,
@@ -231,19 +232,22 @@ for col in cols_6dp:
 # ...
 
 print(
-    f" {timediff(start_time, time.time())} merging and comparing the {len(funds)} \
+    f" {timediff(start_time, time.time())} merging \
+and comparing the {len(funds)} \
 CS1 fund holdings and NAVs as at {rptDate.strftime('%A %d %B %Y')}"
 )
 
 # convert the PARN holdings into Reg 28 format with correspodning headings
 start_time = time.time()
 print(
-    f"\nConverting the CS1 fund PARN holdings in readiness for Reg 28 classification ..."
+    f"\nConverting the CS1 fund PARN holdings in \
+readiness for Reg 28 classification ..."
 )
 
 s = "" if len(funds) == 1 else "s"
 cs1_fname = os.path.join(
-    pthTest, f"CS1 PARN holdings ({len(funds)}) {rptDate.strftime('%d%b%Y')}.xlsx"
+    pthTest, f"CS1 PARN holdings \
+({len(funds)}) {rptDate.strftime('%d%b%Y')}.xlsx"
 )
 
 hold_cols = [
@@ -253,7 +257,7 @@ hold_cols = [
     "PrimaryAssetID",
     "CCY",
     "Sum of Market Value Income",
-    "% of Total Market Value",
+    r"% of Total Market Value",
     "Current Exposure",
 ]
 hReg28 = holdings[hold_cols]  # identify the subset of holdings columns to be used
@@ -262,7 +266,7 @@ hReg28 = hReg28.rename(
         "Entity ID": "Entity Name",
         "PrimaryAssetID": "Primary Asset ID",
         "Sum of Market Value Income": "End Market Value",
-        "% of Total Market Value": "Percentage of Market Value",
+        r"% of Total Market Value": "Percentage of Market Value",
         "Current Exposure": "Closing Exposure PA",
     }
 )
@@ -279,12 +283,16 @@ hReg28.reset_index(drop=True, inplace=True)
 # hReg28.info()
 
 print(
-    f" {timediff(start_time, time.time())} converting the CS1 fund PARN holdings in readiness for Reg 28 classification\n"
+    f" {timediff(start_time, time.time())} converting the CS1 \
+fund PARN holdings in readiness for Reg 28 classification\n"
 )
 
 # write the CS1 holdings dataframe to review it as a worksheet
 start_time = time.time()
-print("\nWriting the CS1 fund holdings dataframe and navs dataframe to a sheet ...")
+print(
+    "\nWriting the CS1 fund holdings dataframe and navs \
+dataframe to a sheet ..."
+)
 
 writer = pd.ExcelWriter(cs1_fname, engine="xlsxwriter")  # instantiate a sheet writer
 hReg28.to_excel(writer, index=False, sheet_name="All")  # write the NAV sheet
@@ -294,12 +302,16 @@ writer.close()  # https://pandas.pydata.org/docs/reference/api/pandas.ExcelWrite
 print(f" \n{cs1_fname}\n")
 
 print(
-    f" {timediff(start_time, time.time())} writing the CS1 fund holdings dataframe and navs dataframe to a sheet\n"
+    f" {timediff(start_time, time.time())} writing the CS1 \
+fund holdings dataframe and navs dataframe to a sheet\n"
 )
 
 # run the CS1 Reg 28 classification script
 start_time = time.time()
-print(f"\nClassifying the no-lookthrough holdings for the CS1 reports ...")
+print(
+    f"\nClassifying the no-lookthrough holdings \
+for the CS1 reports ..."
+)
 
 r_classifier(
     "cs1",
@@ -316,7 +328,7 @@ start_time = time.time()
 print(f"Generating the CS1 reports ...\n")
 
 # scrpt = pth_gitrepo + r"\cs1_reporting.ipynb"
-subprocess.run(["python", cs1_reporting])
+subprocess.run([sys.executable, cs1_reporting])
 
 print(
     f" \n{timediff(start_time, time.time())} generating \
@@ -328,6 +340,8 @@ print(
 roundtripping download, merge and Reg 28 CS1 reports\n",
 )
 
-print("\n\n#####################")
-print("#   END r28_c1.py   #")
-print("#####################\n\n")
+print("\n\n################################")
+print("#                              #")
+print("#      END r28_cs1.py   X      #")
+print("#                              #")
+print("################################\n\n")

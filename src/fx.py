@@ -59,7 +59,7 @@ if __name__ == "__main__":
         writer = csv.writer(f)
         writer.writerow(["date", "usd_zar"])
         writer.writerows(rates.items())
-    print(f"\nWritten {len(rates)} rows to fx_rates.csv")
+    print(f"\nWrote {len(rates)} rows to fx_rates.csv")
 
     # from os import startfile
     # startfile(pth_fx)

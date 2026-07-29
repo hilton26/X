@@ -4,7 +4,9 @@
 # # Summarise Derivative Cover Check Sheets - new format
 
 print("\n\n##############################################")
-print("#    START 3/4 derv_checker_summarising.py   #")
+print("#                                            #")
+print("#   START 3/4 derv_checker_summarising.py X  #")
+print("#                                            #")
 print("##############################################\n\n")
 
 # Import libraries
@@ -16,22 +18,17 @@ start_time_0 = start_time
 print("Importing libraries to summarise the derivative calcs ...")
 
 import pandas as pd
-import re, os, shutil
-from pathlib import Path
-from datetime import datetime
-from utilities import timediff, prior_working_day
+import os, sys, shutil
+from utilities import timediff, parn_de
 from tqdm import tqdm
 from constants import (
     pthEXPORTS,
-    pthPy,
-    pth_dl,
     pthMandates,
     pthOverdrafts,
     pthSttlmnt,
     pthDaily,
     pthLOCAL,
 )
-from utilities import timediff, prior_working_day
 
 print(
     f" {timediff(start_time, time.time())} importing libraries \
@@ -46,24 +43,60 @@ print("Setting up paths ...")
 # create a lookup table for fund UT status and investment team
 twoA = pd.read_excel(pthSttlmnt, sheet_name="Funds", usecols="A, D:E")
 
-print(f"{timediff(start_time, time.time())} setting up paths", "\n")
+print(f" {timediff(start_time, time.time())} setting up paths", "\n")
 
 # Get report date and selected summary sheet option
 start_time = time.time()
 print("Getting the reporting date and names of completed derivative files ...")
 
-df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
-    subset=[0]
-)
-k = df.iloc[2, 1]
-rptDate = (
-    k if isinstance(k, datetime) else prior_working_day(datetime.today())
-)  # prior working day or report date override; has type datetime()
-summ_yn = df.iloc[3, 1]
-full = df[0].iloc[1:]
-funds = (",").join(full.tolist())
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
 
-# get fund names of current derivative calculation files
+# check if the required files have been downloaded, else continue
+if not os.path.exists(fPARN) or not os.path.exists(fDE):
+    sys.exit(
+        f"Stopping: missing expected download(s):\n"
+        f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}\n"
+        f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}\n"
+    )
+
+# df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
+#     subset=[0]
+# )
+# k = df.iloc[2, 1]
+# rptDate = (
+#     k if isinstance(k, datetime) else prior_working_day(datetime.today())
+# )  # prior working day or report date override; has type datetime()
+# summ_yn = df.iloc[3, 1]
+# funds = df[0].iloc[1:]
+
+# # derive holdings and derivatives file paths
+# fPARN = os.path.join(
+#     pth_dl,
+#     f"PARN ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
+# )
+
+# fDE = os.path.join(
+#     pth_dl,
+#     f"DERV ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
+# )
+
+# # check if the required files have been downloaded, else
+# if not os.path.exists(fPARN) or not os.path.exists(fDE):
+#     sys.exit(
+#         f"Stopping: missing expected download(s):\n"
+#         f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}\n"
+#         f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}"
+#     )
+
+print(
+    f" {rptDate.strftime('%A %d %b %Y')} for {len(funds)} funds:\n",
+    f"{(', ').join(funds.tolist())}",
+)
+
+print(
+    f" {timediff(start_time, time.time())} getting the reporting \
+date and latest downloaded holdings and derivatives files\n",
+)
 
 # rptDate    = datetime(2025, 3, 6)    # TEST
 y = os.scandir(pthEXPORTS)
@@ -71,34 +104,42 @@ pattern = f"Derv Calc {rptDate.strftime('%d%b%Y')}.xlsx"
 start_y = time.time()
 print(
     "",
-    f"Get scandir() of derivative calcs folder for {rptDate.strftime('%a %d %B %Y')}",
+    f"Get scandir() of derivative calcs \
+folder for {rptDate.strftime('%a %d %B %Y')}",
 )
-funds = []
-for s in tqdm(y):
+funds_cmpl = []
+for s in tqdm(
+    y,
+    desc=f"Getting the names of completed derivative \
+calculation files for {rptDate.strftime('%A %d %B %Y')} ...",
+):
     if s.name.endswith(pattern):  # all 'XXXX Derv  Calc ddMmmYYYY.xlsx' files
-        funds.append(s.name[:-25])  # fund codes of all files with current report dates
-print("", f"{len(funds)} funds")
+        funds_cmpl.append(
+            s.name[:-25]
+        )  # fund codes of all files with current report dates
+print("", f"{len(funds_cmpl)} funds")
 print(
     "",
-    f"{timediff(start_y, time.time())} to get scandir() of \
-        derivative calcs folder for {rptDate.strftime('%a %d %B %Y')}",
+    f" {timediff(start_y, time.time())} to get scandir() of \
+derivative calcs folder for {rptDate.strftime('%a %d %B %Y')}",
 )
 
 print(
-    f" {rptDate.strftime('%A %d %b %Y')} for {len(full)} \
-        funds: {(', ').join(full.tolist())}",
-    "\n",
+    f" {rptDate.strftime('%A %d %b %Y')} for {len(funds)} \
+funds: {(', ').join(funds.tolist())}\n",
 )
-print(f" {'No' if summ_yn == 'No' else 'A'} summary sheet is required")
+print(
+    f" {'No' if summ_yn == 'No' else 'A'} summary \
+sheet is required\n"
+)
 
 print(
-    f" {len(funds)} completed derivative calculation \
-        files at {rptDate.strftime('%A %#d %B %Y')}"
+    f" {len(funds_cmpl)} completed derivative calculation \
+files at {rptDate.strftime('%A %#d %B %Y')}"
 )
 print(
-    f"{timediff(start_time, time.time())} getting the reporting \
-        date and names of completed derivative files",
-    "\n",
+    f"\n  {timediff(start_time, time.time())} getting the reporting \
+date and names of completed derivative files\n",
 )
 
 # Create a dataframe with the necessary columns
@@ -106,7 +147,7 @@ print(
 start_time = time.time()
 print("Creating a dataframe with the necessary columns ...")
 
-summary = pd.DataFrame(funds, columns=["Fund Code"])
+summary = pd.DataFrame(funds_cmpl, columns=["Fund Code"])
 
 cols = [
     "UT?",
@@ -138,26 +179,26 @@ cols = [
 ]
 
 for col in cols:  # create an empty summary dataframe with the given column headings
-    summary[col] = ""
+    summary[col] = pd.Series([""] * len(summary), dtype=object)
     # https://www.reddit.com/r/learnpython/comments/n1ee17/how_to_add_multiple_empty_columns_into_my_data/
 
 print(
-    f"{timediff(start_time, time.time())} creating a \
-        dataframe with the necessary columns\n",
+    f"  {timediff(start_time, time.time())} creating a \
+dataframe with the necessary columns\n",
 )
 
 # dataframe the fund derivative calc summaries
 
 start_time = time.time()
-print(
-    f"Populating the summary dataframe with {len(funds)} \
-funds for {rptDate.strftime('%A %#d %B %Y')} ..."
-)
-
 # read each fund's 'xxxx Derv Calc ddmmmyyyy.xlsx' sheet into the summary dataframe
 if summ_yn != "No":
     for index, fund in enumerate(
-        tqdm(funds)
+        tqdm(
+            funds_cmpl,
+            desc=f"Populating the summary \
+dataframe with {len(funds_cmpl)} funds for \
+{rptDate.strftime('%A %#d %B %Y')} ...",
+        )
     ):  # https://stackoverflow.com/questions/522563/how-to-access-the-index-value-in-a-for-loop
         fn = (
             pthEXPORTS + rf"\{fund}" + f" Derv Calc {rptDate.strftime('%d%b%Y')}.xlsx"
@@ -229,7 +270,9 @@ if summ_yn != "No":
         # https://stackoverflow.com/questions/48066933/pandas-sorting-days-whilst-preserving-order
 
 print(
-    f" {timediff(start_time, time.time())} populating the summary dataframe with {len(funds)} funds for {rptDate.strftime('%A %#d %B %Y')}\n"
+    f"  {timediff(start_time, time.time())} populating \
+the summary dataframe with {len(funds_cmpl)} funds \
+for {rptDate.strftime('%A %#d %B %Y')}\n"
 )
 
 summary = summary.sort_values(
@@ -241,7 +284,9 @@ summary = summary.sort_values(
 
 start_time = time.time()
 print(
-    f"Sorting and then saving the summary dataframe with {len(funds)} funds for {rptDate.strftime('%A %#d %B %Y')} ..."
+    f"Sorting and then saving the summary \
+dataframe with {len(funds_cmpl)} funds for \
+{rptDate.strftime('%A %#d %B %Y')} ..."
 )
 
 # sort the summary dataframe and save it to a new Excel file
@@ -260,9 +305,9 @@ for ut_type in ut_types:  # ... then stack the no derivative funds
 sorted_summary.reset_index(inplace=True, drop=True)
 
 print(
-    f"{timediff(start_time, time.time())} sorting and then\
-        saving the summary dataframe with {len(funds)} \
-            funds for {rptDate.strftime('%A %#d %B %Y')}"
+    f" {timediff(start_time, time.time())} sorting and then\
+saving the summary dataframe with {len(funds_cmpl)} \
+funds for {rptDate.strftime('%A %#d %B %Y')}"
 )
 
 start_time = time.time()
@@ -274,16 +319,9 @@ print("Writing the dataframe to a sheet ...")
 # sorted_summary.to_excel(pthEXPORTS + f'\Derv {rptDate}.xlsx', index = False, sheet_name = 'Summary')
 # print(' ', pthEXPORTS + f'\Derv {rptDate}.xlsx')
 
+
 # dataframe the PARN and Derv reports from the local Downloads folder
-fPARN = os.path.join(
-    pth_dl,
-    f"PARN ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
-)
 wbH = pd.read_csv(fPARN)
-fDE = os.path.join(
-    pth_dl,
-    f"DERV ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
-)
 wbD = pd.read_csv(fDE)
 
 # rename 'UNKNOWNs' as 'SWAPS' where they are not SYTH or empty portfolio holdings
@@ -297,14 +335,18 @@ unknowns_filter = (
 wbH.loc[unknowns_filter, ["Valuation First Level", "Valuation Second Level"]] = "SWAPS"
 unknowns = wbH.loc[unknowns_filter]
 print(
-    f'  {len(unknowns)} "UNKNOWN" securities found and amended: {(", ").join(unknowns["PrimaryAssetID"].tolist())}'
+    f'  {len(unknowns)} "UNKNOWN" securities \
+found and amended: \
+{(", ").join(unknowns["PrimaryAssetID"].tolist())}'
 )
 
 # identify "No Data found for this Entity" funds
 no_data_filter = wbH["i Issue Name"] == "No Data found for this Entity"
 no_data = wbH.loc[no_data_filter]
 print(
-    f'  {len(no_data)} "No data" fund{"s" if len(no_data["Entity ID"]) != 1 else ""}: {(", ").join(no_data["Entity ID"].tolist())}'
+    f'  {len(no_data)} "No data" \
+fund{"s" if len(no_data["Entity ID"]) != 1 else ""}: \
+{(", ").join(no_data["Entity ID"].tolist())}'
 )
 
 # # Change the '% of Total Market Value" column
@@ -348,7 +390,7 @@ print(
 #     newCEp  # wbH['% of Total Market Value'].sum(), check, should equal number of funds
 # )
 
-# print(f"{timediff(start_time, time.time())} recalculating and saving fund Total Market Value percentages","\n")
+# print(f" {timediff(start_time, time.time())} recalculating and saving fund Total Market Value percentages","\n")
 
 
 # convert date columns to datetime format
@@ -365,7 +407,7 @@ num_cols = [
     "Dividend Receivable",
     "Sum of Market Value Income",
     "Market Price /Yield",
-    "% of Total Market Value",
+    r"% of Total Market Value",
     "Coupon",
     "Duration",
     "Modified Duration",
@@ -390,7 +432,7 @@ for num_col_derv in num_cols_dervs:
 
 # write the summary, fund holdings, and derivative deltas to a workbook
 summary_name = (
-    pthEXPORTS + f"\Derv {rptDate.strftime('%d%b%Y')}.xlsx"
+    pthEXPORTS + rf"\Derv {rptDate.strftime('%d%b%Y')}.xlsx"
 )  # assign the file name
 writer = pd.ExcelWriter(
     summary_name, engine="xlsxwriter"
@@ -419,19 +461,25 @@ writer.close()  # https://pandas.pydata.org/docs/reference/api/pandas.ExcelWrite
 print(" ", summary_name)
 # TEST ++++++++++++++++
 
-print(f"{timediff(start_time, time.time())} writing the dataframe to a sheet")
+print(
+    f"\n  {timediff(start_time, time.time())} \
+writing the dataframe to a sheet\n"
+)
 
 # sorted_summary
 
 # prettify the summary sheet and add hyperlinks with xlwings
 
-print(f"Prettifying and adding links to the summary sheet with xlwings ...")
+print(
+    f"\nPrettifying and adding links to \
+the summary sheet with xlwings ...\n"
+)
 start_time = time.time()
 
 import xlwings as xw
 
 if summ_yn != "No":
-    wbS = xw.Book(pthEXPORTS + f"\Derv {rptDate.strftime('%d%b%Y')}.xlsx")
+    wbS = xw.Book(pthEXPORTS + rf"\Derv {rptDate.strftime('%d%b%Y')}.xlsx")
     shtS = wbS.sheets["Summary"]  # derivative cover summary sheet
     # xl.DisplayAlerts = False                              # suppress Excel warning dialogues
 
@@ -448,9 +496,7 @@ if summ_yn != "No":
     shtS["X1"].add_hyperlink(pthSttlmnt, "Team")
     shtS.range("X:X").column_width = 11.71
     shtS["Y1"].value = "NAV"
-    shtS[
-        "Y:Y"
-    ].number_format = "#,##0.00"  # https://stackoverflow.com/questions/55391542/adjust-number-formatting-in-excel-via-xlwings-from-python
+    shtS["Y:Y"].number_format = "#,##0.00"
     shtS["Z1"].add_hyperlink(pthOverdrafts, "PIM Overdrafts")
     shtS["Z1"].api.HorizontalAlignment = -4108  # xlCenter
     shtS["Z1"].api.VerticalAlignment = -4160  # xlTop
@@ -463,35 +509,36 @@ if summ_yn != "No":
 
     # add investment team names and links to fund mandates and calculation sheets
     start_time_links = time.time()
-    print(
-        " ",
-        "Adding investment team names and links to fund mandates and calculation sheets",
-    )
+
     for index, row in tqdm(
         sorted_summary[["Fund Code"]].iterrows(),
         total=sorted_summary[["Fund Code"]].shape[0],
+        desc="Adding investment team names and \
+links to fund mandates and calculation sheets ...",
     ):  # iterate over the funds
         # shtS['A' + str(index + 2)].value = f'{shtS["A" + str(index + 2)]} calc sheet'                                         # fund code
         shtS["A" + str(index + 2)].add_hyperlink(
-            rf"{pthEXPORTS}\{row[0]} Derv Calc {rptDate.strftime('%d%b%Y')}.xlsx",
-            f"{row[0]}",
+            rf"{pthEXPORTS}\{row['Fund Code']} Derv Calc {rptDate.strftime('%d%b%Y')}.xlsx",
+            f"{row['Fund Code']}",
         )  # link to calc sheet
         shtS["W" + str(index + 2)].add_hyperlink(
-            rf"{pthMandates}\{row[0]} Rules.docx", f"{row[0]}"
+            rf"{pthMandates}\{row['Fund Code']} Rules.docx", f"{row['Fund Code']}"
         )  # link to fund mandate
     print(
         " ",
-        f"{timediff(start_time_links, time.time())} adding investment team names and links to fund mandates and calculation sheets",
+        f" {timediff(start_time_links, time.time())} adding \
+investment team names and links to fund \
+mandates and calculation sheets",
     )
 
     # add conditional formating for values that are negative or exceed 100% of NAV
     start_time_format = time.time()
-    print(
-        "\n",
-        " ",
-        f"Adding conditional formats for values that are negative or exceed 100% of NAV; {len(funds) * 19} = {len(funds)} funds x 19 columns",
-    )
-    for a_cell in tqdm(shtS["D2:V2"].expand("down")):
+    for a_cell in tqdm(
+        shtS["D2:V2"].expand("down"),
+        desc=f"Adding conditional formats for values < 0% or > 100% \
+of NAV; {len(funds_cmpl) * 19:,.0f} \
+= {len(funds_cmpl)} funds x 19 columns",
+    ):
         if type(a_cell.value) in [float, int]:
             if a_cell.value < 0:
                 a_cell.font.color = (
@@ -503,24 +550,29 @@ if summ_yn != "No":
                 a_cell.color = (255, 197, 255)  # light pink for cell colour
     print(
         " ",
-        f"{timediff(start_time_format, time.time())} adding conditional formats for values that are negative or exceed 100% of NAV",
+        f" {timediff(start_time_format, time.time())} adding \
+conditional formats for values that \
+are negative or exceed 100% of NAV",
     )
 
 if summ_yn != "No":
     wbS.save()
     wbS.close()
 
-print(" ", pthEXPORTS + f"\Derv {rptDate.strftime('%d%b%Y')}.xlsx")
+print(" ", pthEXPORTS + rf"\Derv {rptDate.strftime('%d%b%Y')}.xlsx")
 print(
-    f"\n{timediff(start_time, time.time())} prettifying and adding links to the summary sheet with xlwings",
-    "\n",
+    f"\n {timediff(start_time, time.time())} prettifying \
+and adding links to the summary sheet with xlwings\n",
 )
 
 # Save the summary dataframe to the derv_summary.xlsx template using xlwings
 
 start_time = time.time()
 print(
-    f"Saving the summary dataframe to the derv_summary.xlsx template; {(len(funds) + 1) * 19} = ({len(funds)} funds + 1) x 19 columns"
+    f"Saving the summary dataframe to \
+the derv_summary.xlsx template; \
+{(len(funds_cmpl) + 1) * 19:,.0f} = ({len(funds_cmpl)} \
+funds_cmpl + 1) x 19 columns"
 )
 
 # open the derv_summary.xlsx derv template and assign values to the holdings and deltas sheets
@@ -539,8 +591,12 @@ with xw.App(visible=False) as app:
         index=False
     ).value = sorted_summary  # paste fund holdings
 
-    # conditional formatting    https://stackoverflow.com/questions/72374261/xlwings-conditional-formatting-based-on-value
-    for a_cell in tqdm(shtS_S["D1:V1"].expand("down")):
+    # conditional formatting
+    for a_cell in tqdm(
+        shtS_S["D1:V1"].expand("down"),
+        desc=f"Adding conditional formats \
+for {len(funds_cmpl)} funds",
+    ):
         if type(a_cell.value) in [
             float,
             int,
@@ -555,18 +611,27 @@ with xw.App(visible=False) as app:
                 a_cell.font.color = (255, 0, 0)  # (255,   0,   0) or #FF0000 is red
 
     # add fund derv calc hyperlinks
-    for a_cell in shtS_S["A2:A2"].expand("down"):
+    for a_cell in tqdm(
+        shtS_S["A2:A2"].expand("down"),
+        desc=f"Adding hyperlinks to derivative \
+calculation files for {len(funds_cmpl)} funds",
+    ):
         a_cell.add_hyperlink(
             os.path.join(
                 pthEXPORTS,
-                f"{a_cell.value} Derv Calc {rptDate.strftime('%d%b%Y')}.xlsx",
+                f"{a_cell.value} Derv Calc \
+{rptDate.strftime('%d%b%Y')}.xlsx",
             ),
             a_cell.value,
             screen_tip=None,
         )
 
     # add fund mandate hyperlinks
-    for a_cell in shtS_S["W2:W2"].expand("down"):
+    for a_cell in tqdm(
+        shtS_S["W2:W2"].expand("down"),
+        desc=f"Adding hyperlinks to fund \
+mandate files for {len(funds_cmpl)} funds",
+    ):
         a_cell.add_hyperlink(
             os.path.join(pthMandates, f"{a_cell.value} rules.docx"),
             a_cell.value,
@@ -597,18 +662,20 @@ with xw.App(visible=False) as app:
 print(" ", os.path.join(pthDaily, "derv_summary.xlsx"))
 
 print(
-    f"{timediff(start_time, time.time())} saving the summary dataframe to the derv_summary.xlsx template",
-    "\n",
+    f" {timediff(start_time, time.time())} saving \
+the summary dataframe to the derv_summary.xlsx template\n",
 )
 
 # Delete contents of the temporary local folder
-
-print(f"Deleting contents of the local temporary folder ...")
 start_time = time.time()
 
 local_folder_delete = "yes"
 if local_folder_delete == "yes":
-    for filename in tqdm(os.listdir(pthLOCAL)):
+    for filename in tqdm(
+        os.listdir(pthLOCAL),
+        desc="Deleting \
+contents of the local temporary folder",
+    ):
         file_path = os.path.join(pthLOCAL, filename)
         try:
             if os.path.isfile(file_path) or os.path.islink(file_path):
@@ -619,15 +686,17 @@ if local_folder_delete == "yes":
             print(f"Couldn't delete {file_path} because {e}")
 
 print(
-    f"{timediff(start_time, time.time())} deleting contents of \
-        the local temporary folder completed \n"
+    f" {timediff(start_time, time.time())} deleting contents of \
+the local temporary folder completed \n"
 )
 
 print(
-    f"{timediff(start_time_0, time.time())} roundtrip time to \
-        summarise derivative calcs \n"
+    f" {timediff(start_time_0, time.time())} roundtrip time to \
+summarise derivative calcs \n"
 )
 
 print("\n\n##############################################")
-print("#     END 3/4 derv_checker_summarising.py    #")
+print("#                                            #")
+print("#    END 3/4 derv_checker_summarising.py X   #")
+print("#                                            #")
 print("##############################################\n\n")

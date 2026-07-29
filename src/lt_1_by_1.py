@@ -1,18 +1,44 @@
 print("\n\n(1) setting input variables for testing the osprey() function")
 from datetime import datetime
+import re
 import pandas as pd
 from constants import pthPy, pth_dl
+from utilities import prior_month_end
 from tqdm import tqdm
 
 # (1) inputs to function osprey() for testing purposes
 
-n = 152
-batch_size = n - 1
-start = 1
-# batch_number = 1
-# row_skip = 1
+# get fund codes
+cols_to_use = "N"
+df = pd.read_excel(
+    pthPy,
+    sheet_name="arc",
+    usecols=cols_to_use,
+    header=None,
+    skiprows=1,
+).dropna()
+df.columns = [0]
+
+# get reporting date
+df1 = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows=3)
+k = df1.iloc[1, 0]
+rptDate = (
+    k.date() if isinstance(k, datetime) else prior_month_end(datetime.today().date())
+)
+
+# set input variables for osprey()
+rpt_type = "r28i"
 sfx = "csv"
-rpt_type = "fnav"
+d_from = rptDate
+d_to = rptDate
+funds = df[0].tolist()
+n = len(df) + 1
+batch_size = 1  # files per batch
+row_skip = (
+    1  # initial row to skip before reading the first batch; will be updated in the loop
+)
+start = 1
+
 
 failed_batches = []
 for batch_number in tqdm(range(start, n), desc="Processing batches"):
@@ -21,11 +47,13 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
     df = pd.read_excel(
         pthPy,
         sheet_name="arc",
-        usecols="A",
+        usecols=cols_to_use,
         header=None,
         skiprows=row_skip,
         nrows=batch_size,
     ).dropna()  # nrows=batch_size,
+    df.columns = [0]
+
     # print(df)
     if df.empty:
         print(
@@ -37,8 +65,7 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
     name = f"{batch_number}_of_{n - 1}"
     # print(name, len(df), df)
 
-    d_from = datetime(2026, 4, 30)
-    d_to = datetime(2026, 4, 30)
+    print(f"Fund is {funds} for batch_number {batch_number} with row_skip {row_skip}")
 
     to_date = " to " + d_to.strftime("%d%b%Y") if d_to != d_from else ""
     new_file_name = (
@@ -54,13 +81,24 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
 
     print(f"{len(df)} \n {to_date}\n{name}\n {new_file_name}\n {funds}")
 
-    print(
-        f"Expected file name: {rpt_type.upper()} "
+    # (1) present expected file name and whether it already exists in the Downloads folder, before downloading the report
+
+    new_file_name = (
+        f"{rpt_type.upper()} "
         f"{name}({len(funds.split(','))}) "
         f"{d_from.strftime('%d%b%Y')}"
         f"{' to ' + d_to.strftime('%d%b%Y') if d_to != d_from else ''}"
-        f".{sfx}\n"
-    )  # must natch line 345 below for the file existence check to work correctly
+        f".{sfx}"
+    )
+
+    print(f"Expected file name: {new_file_name}")
+    # print(
+    #     f"Expected file name: {rpt_type.upper()} "
+    #     f"{name}({len(funds.split(','))}) "
+    #     f"{d_from.strftime('%d%b%Y')}"
+    #     f"{' to ' + d_to.strftime('%d%b%Y') if d_to != d_from else ''}"
+    #     f".{sfx}\n"
+    # )  # must natch line 345 below for the file existence check to work correctly
 
     # print(type(funds), funds)
     # An Eagle report lookup function, given seven parameters
@@ -102,7 +140,6 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
 
     # selenium suite of tools
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.support.select import Select
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -163,10 +200,18 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
 
         print("(7) having logged in, opening the selected report page ...")
         # (7) having logged in, open the selected report page
+        # Embed credentials in the URL to pre-authenticate HTTP Basic Auth dialogs,
+        # because GeckoDriver does not support send_keys on promptUserAndPass dialogs.
+        from urllib.parse import urlparse, urlunparse
+
         report_link = report_types_dict[rpt_type][1]
-        driver.get(
-            report_link
-        )  # a hyperlink for the report page selected in the function osprey()
+        _parsed = urlparse(report_link)
+        _authed_link = urlunparse(
+            _parsed._replace(
+                netloc=f"{os.getenv('EAGLE_UN')}:{os.getenv('EAGLE_PW')}@{_parsed.netloc}"
+            )
+        )
+        driver.get(_authed_link)
 
         try:
             print(
@@ -259,13 +304,11 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
     alert after clicking Submit ..."
             )
             # (12a) test for the presence of an authentication alert after submitting the report query
+            # send_keys is not supported on promptUserAndPass dialogs in GeckoDriver; dismiss instead
             try:
                 WebDriverWait(driver, 10).until(EC.alert_is_present())
                 alert = driver.switch_to.alert
-                alert.send_keys(
-                    os.getenv("EAGLE_UN") + Keys.TAB + os.getenv("EAGLE_PW")
-                )
-                alert.accept()
+                alert.dismiss()
             except TimeoutException:
                 pass
             except NoAlertPresentException:
@@ -288,13 +331,11 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
     alert after clicking Submit ..."
             )
             # (13a) test for the presence of an authentication alert after submitting the report query
+            # send_keys is not supported on promptUserAndPass dialogs in GeckoDriver; dismiss instead
             try:
                 WebDriverWait(driver, 10).until(EC.alert_is_present())
                 alert = driver.switch_to.alert
-                alert.send_keys(
-                    os.getenv("EAGLE_UN") + Keys.TAB + os.getenv("EAGLE_PW")
-                )
-                alert.accept()
+                alert.dismiss()
             except TimeoutException:
                 pass
             except NoAlertPresentException:
@@ -328,11 +369,26 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
             print("(14b) waiting for the download to complete ...")
             # (14b) waiting for the download to complete ...
             start_time_dl = time.time()
+            t_dl = 30  # time to wait for download to complete
+            tz = 60  # max wait time of 1 minutes for download to complete and
+            # moving on to the next batch, to avoid getting stuck
+            # on a batch if the download gets stuck for some reason
+            dl_pattern = re.compile(
+                rf"{re.escape(report_types_dict[rpt_type][0])}.*\.{sfx}$"
+            )
             while True:
-                if not list(pth_dl.glob("*.part")) and list(pth_dl.glob(f"*.{sfx}")):
+                candidates = [
+                    f
+                    for f in pth_dl.iterdir()
+                    if dl_pattern.search(f.name)
+                    and time.time() - f.stat().st_mtime <= t_dl
+                ]  # report type, suffix and downloaded within the past 30 seconds
+                if not list(pth_dl.glob("*.part")) and candidates:
                     break
-                if time.time() - start_time_dl > 300:
-                    print("  Warning: timed out waiting for download after 300 seconds")
+                if time.time() - start_time_dl > tz:
+                    print(
+                        f"  Warning: timed out waiting for download after {tz} seconds"
+                    )
                     break
                 time.sleep(1)
             print(f"  Download completed after {timediff(start_time_dl, time.time())}")
@@ -359,7 +415,7 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
                     lkup, how="left", left_on="NAV Entity ID", right_on="funds_post"
                 )
                 fnav["NAV Entity ID"] = fnav["funds_ante"]
-                fnav.drop(columns=["funds_ante", "funds_post"], axis=1, inplace=True)
+                fnav.drop(columns=["funds_ante", "funds_post"], inplace=True)
                 fnav.to_csv(filen, index=False)
 
             print("(14d) closing the web driver ...")
@@ -376,11 +432,11 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
                 pass
             if attempt < max_retries:
                 print(
-                    f"  Retrying from step 4 (attempt {attempt + 1}/{max_retries}) ..."
+                    f"  Retrying {new_file_name} from step 4 (attempt {attempt + 1}/{max_retries}) ..."
                 )
             else:
                 print(
-                    f"  All {max_retries} attempts failed for batch_number {batch_number}."
+                    f"  All {max_retries} {new_file_name} attempts failed for batch_number {batch_number}."
                 )
                 failed_batches.append(batch_number)
 

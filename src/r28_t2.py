@@ -7,7 +7,7 @@
 
 print("\n\n##############################################")
 print("#                                            #")
-print("#              START r28_t2.py               #")
+print("#              START r28_t2.py  X            #")
 print("#                                            #")
 print("##############################################\n\n")
 
@@ -19,21 +19,18 @@ start_time = time.time()
 print(f"Importing libraries ...")
 
 import pandas as pd
-import numpy as np
-import openpyxl, os, math
+import openpyxl, os
 from datetime import datetime
-from tqdm import tqdm, notebook
+from tqdm import tqdm 
 from constants import (
     pthPy,
     pthSttlmnt,
-    pth_schib_tmpl,
     pth_tbl2_tmpl,
     pth_tbl2_static,
     pthReports,
     pthTest,
 )
 from utilities import timediff, item_row, prior_month_end
-import subprocess
 
 print(f" {timediff(start_time, time.time())} importing libraries completed \n")
 
@@ -121,7 +118,12 @@ z = pd.read_excel(
 from openpyxl.styles import Alignment
 from openpyxl.styles.borders import Border, Side
 
-for fund in tqdm(nl["Fund"]):
+
+# tqdm(range(start, n), desc="Processing batches"):
+for fund in tqdm(
+    nl["Fund"],
+    desc=f"Processing the Reg 28 Table 2 reports as at {rptDate.strftime('%d%b%Y')} ...",
+):
     # set fund report Table 2 file name
     fnm = os.path.join(
         pthTest, f"{fund} Reg28 Table2 {rptDate.strftime('%d%b%Y')}.xlsx"
@@ -401,11 +403,12 @@ for fund in tqdm(nl["Fund"]):
     # print(f' Tbl2 {fund}, {timediff(start_time, time.time())}')
 
 print(
-    f"{len(nl['Fund'])} Reg 28 Table 2 reports for {rptDate.strftime('%d%b%Y')} completed and stored in the test folder"
+    f"{timediff(start_time0, time.time())} for {len(nl['Fund'])} Reg 28 Table 2 reports \
+at {rptDate.strftime('%d%b%Y')} completed and stored in the test folder"
 )
 
 print("\n\n##############################################")
 print("#                                            #")
-print("#               END r28_t2.py                #")
+print("#               END r28_t2.py   X            #")
 print("#                                            #")
 print("##############################################\n\n")

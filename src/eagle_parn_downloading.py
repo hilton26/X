@@ -9,9 +9,11 @@
 
 # In[1]:
 
-print("##############################################")
-print("#     START 1/4 DERV_CHECKER_DOWNLOADING     #")
-print("##############################################")
+print("\n\n#####################################################")
+print("#                                                   #")
+print("#      START 1/4 derv_checker_downloading.py   X    #")
+print("#                                                   #")
+print("#####################################################\n\n")
 
 # create a time difference function
 import time
@@ -283,6 +285,8 @@ print(
 
 driver.quit()  # close the web driver
 
-print("##############################################")
-print("#      END 1/4 DERV_CHECKER_DOWNLOADING      #")
-print("##############################################")
+print("\n\n#####################################################")
+print("#                                                   #")
+print("#       END 1/4 derv_checker_downloading.py   X     #")
+print("#                                                   #")
+print("#####################################################\n\n")

@@ -3,9 +3,11 @@
 
 # # Compile and Summarise PGF Hedge Share Class Sheets
 
-print("\n\n###################################")
-print("#    START 2/2 pgf_compiling.py   #")
-print("###################################\n\n")
+print("\n\n#####################################")
+print("#                                   #")
+print("#    START 2/2 pgf_compiling.py X   #")
+print("#                                   #")
+print("#####################################\n\n")
 
 # Import libraries
 import time
@@ -21,7 +23,6 @@ import os, shutil
 import re  # for regex
 from re import search  # for regex
 from pathlib import Path
-from tqdm import tqdm
 from constants import pthPy, pthHdg, pth_dl, pth_hdg_tmpl
 from utilities import timediff, prior_working_day
 
@@ -193,6 +194,8 @@ print(f"\n\n{timediff(start_time_pgf_compiling, time.time())} roundtrip time", "
 # print(f'Opening the Summary sheet for review completed: {timediff(start_time, time.time())}', '\n')
 # print(f'Roundtrip time for compiling the PGF hedge class sheet: {timediff(start_time_pgf_compiling, time.time())}', '\n')
 
-print("\n\n###################################")
-print("#     END 2/2 pgf_compiling.py    #")
-print("###################################\n\n")
+print("\n\n#####################################")
+print("#                                   #")
+print("#     END 2/2 pgf_compiling.py X    #")
+print("#                                   #")
+print("#####################################\n\n")

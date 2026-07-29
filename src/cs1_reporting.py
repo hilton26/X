@@ -1,19 +1,13 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Prepare the CS1 reports
-
-# In[12]:
-
+# takes as input "CS1 PARN Holdings (xx) 31May2026.xlsx" in pthTest folder
 
 # libraries, libraries!
 import time
 
 start_time_cs1 = time.time()
 start_time = time.time()
+
 from datetime import datetime, timedelta
 import pandas as pd
-from pathlib import Path
 import os
 from tqdm import tqdm
 from constants import pthPy, pthSttlmnt, pthTest, pth_r28_lmts
@@ -34,7 +28,6 @@ import openpyxl
 
 # import copy  # "AttributeError: Style objects are immutable and cannot be changed. Reassign the style with a copy"
 from openpyxl.styles import (
-    NamedStyle,
     Alignment,
     Font,
     PatternFill,
@@ -56,8 +49,8 @@ cell_font_calibri_11_bold = Font(
 )  # https://www.youtube.com/watch?v=fzUbfI8z1uc at 4:56
 
 print(
-    f" {timediff(start_time, time.time())} importing openpyxl and some of its functions",
-    "\n",
+    f"\n {timediff(start_time, time.time())} importing \
+openpyxl and some of its functions\n",
 )
 
 # # get report data
@@ -83,7 +76,8 @@ print(
 {len(funds)} fund{s}: \n  {(',').join(funds)}\n"
 )
 print(
-    f" {timediff(start_time_inputs, time.time())}: getting the CS1 report inputs completed\n"
+    f" {timediff(start_time_inputs, time.time())}: \
+getting the CS1 report inputs completed\n"
 )
 
 
@@ -104,11 +98,16 @@ static = pd.read_excel(pth_r28_lmts, sheet_name="Static", usecols="A,D").dropna(
 td = rptDate + timedelta(days=397)
 td = datetime.combine(td, datetime.min.time())
 
-print(f" {timediff(start_time, time.time())} setting constants completed\n")
+print(
+    f" {timediff(start_time, time.time())} \
+setting constants completed\n"
+)
 
 # dataframe the CS1 PARN holdings sheet with All, PARN, and NAV tabs
 cs1_fname = os.path.join(
-    pthTest, f"CS1 PARN holdings ({len(funds)}) {rptDate.strftime('%d%b%Y')}.xlsx"
+    pthTest,
+    f"CS1 PARN holdings ({len(funds)}) \
+{rptDate.strftime('%d%b%Y')}.xlsx",
 )
 holdings = pd.read_excel(cs1_fname, sheet_name="PARN", usecols="A:AQ")
 navs = pd.read_excel(cs1_fname, sheet_name="NAVs", usecols="A:I")
@@ -646,7 +645,7 @@ for fund in tqdm(funds):
         # Net bonds market value, row 14 of CS1 report
         sh["B14"] = (
             parn[
-                (parn["Reg 28 Classification"].astype(str).str[:3] == "2.1")
+                (parn["Reg 28 Classification"].astype(str).str[:1] == "2")
                 & (parn["CCY"] == "ZAR")
             ]["End Market Value"].sum()
             / nav
@@ -654,7 +653,7 @@ for fund in tqdm(funds):
         )
         sh["C14"] = (
             parn[
-                (parn["Reg 28 Classification"].astype(str).str[:3] == "2.2")
+                (parn["Reg 28 Classification"].astype(str).str[:1] == "2")
                 & (parn["CCY"] != "ZAR")
             ]["End Market Value"].sum()
             / nav
@@ -665,7 +664,7 @@ for fund in tqdm(funds):
         # Net bonds effective exposure, row 14 of CS1 report
         sh["F14"] = (
             parn[
-                (parn["Reg 28 Classification"].astype(str).str[:3] == "2.1")
+                (parn["Reg 28 Classification"].astype(str).str[:1] == "2")
                 & (parn["CCY"] == "ZAR")
             ]["Closing Exposure PA"].sum()
             / nav
@@ -673,7 +672,7 @@ for fund in tqdm(funds):
         )
         sh["G14"] = (
             parn[
-                (parn["Reg 28 Classification"].astype(str).str[:3] == "2.2")
+                (parn["Reg 28 Classification"].astype(str).str[:1] == "2")
                 & (parn["CCY"] != "ZAR")
             ]["Closing Exposure PA"].sum()
             / nav

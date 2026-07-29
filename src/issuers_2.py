@@ -3,12 +3,18 @@
 
 # # Step 2: Categorisation of securities
 #
-# ### Merge Eagle and structures dataframes and then assign
-# Reg 28 and Reg 30 categories including "Infrastructure"
+# ### Merge Eagle and structures dataframes and then assign Reg 28 and Reg 30 categories including "Infrastructure"
+
+
+print("\n\n###################################")
+print("#                                 #")
+print("#        START issuers_2.py       #")
+print("#                                 #")
+print("###################################\n\n")
+
 
 # libraries, libraries!
-
-print("Importing libraries and setting paths for issuers_2 ...")
+print("Importing libraries for issuers_2 ...")
 import time
 
 start_time_issuers_2 = time.time()
@@ -16,12 +22,16 @@ start_time = time.time()
 
 # general libraries
 from datetime import datetime
+import os
 import pandas as pd  # for dataframes
 import numpy as np  # for np.NaN
 import re  # for regex
 from re import search  # for regex
 from constants import pthPy, pthTest, pth_struct, iss_1, iss_2, mergd
 from utilities import timediff
+
+# import win32com.client as win32
+# xlApp = win32.gencache.EnsureDispatch("Excel.Application")  # to open excel application
 
 # utilise openpyxl tools to add excel features to results sheet
 import openpyxl as px  # for adding sort filters to the excel sheet
@@ -38,11 +48,10 @@ from openpyxl.styles import (
 # import  win32com.client as win32                                          # library to convert xls to xlsx
 # excel = win32.gencache.EnsureDispatch('Excel.Application')                # to open excel application
 
-print(
-    f" {timediff(start_time, time.time())} importing libraries and setting paths for issuers_2\n"
-)
+print(f" {timediff(start_time, time.time())} importing libraries for issuers_2\n")
 
-# create functions
+
+# create functions to identify underlying asset classes
 start_time = time.time()
 print("Setting up functions ...")
 
@@ -55,35 +64,35 @@ def res(t_list, t_string):
 
 
 # define an inf(rastructure) function
-# https://stackoverflow.com/questions/26886653/create-new-column-based-on-values-from-
-# other-columns-apply-a-function-of-multi
 def inf(row):
-    if row["Infra"] == "i" and row["GovGuar"] != 1:
+    if row["infra"] == "i" and row["GovGuar"] != 1:
         return "11(b)"
 
 
 # derivative asset class function
 def derv_ft_op(row):
     if res(["OP", "FT"], row["Investment Type"]) and res(
-        ["AU", "XU"], str(row["Commodity"]).upper()
+        ["AU", "XU"], str(row["commodity"]).upper()
     ):
         return "r"  # commodity
-    if res(["OP", "FT"], row["Investment Type"]) and res(
+    elif (row["Investment Type"] == "FT" and row["property"] == "P") or (
+        "SAPYTR" in str(row["i Issue Name"]).upper()
+    ):
+        return "p"  # property
+    elif res(["OP", "FT"], row["Investment Type"]) and res(
         ["JADM", "ZAUS", "CURR", "ZAR", "USD/ZAR", "JPN YEN"],
         row["i Issue Name"].upper(),
     ):
         return "c"  # currency
-    if res(["OP", "FT"], row["Investment Type"]) and res(
+    elif res(["OP", "FT"], row["Investment Type"]) and res(
         ["ALSI", "FTSE", "UKX", "SPX", "HSCEI", "SPYQ", "SX5E", "NKY", "CSI", "SHSN"],
         row["i Issue Name"].upper(),
     ):
         return "e"  # equity
-    if (row["Investment Type"] == "OP") and (
+    elif (row["Investment Type"] == "OP") and (
         (row["Derivative"] in "Structured Note") or (row["Derivative"] in "Linked Note")
     ):
         return "e"  # equity
-    elif row["Investment Type"] == "FT" and row["Property"] == "P":
-        return "p"  # property
     elif row["Investment Type"] == "DERV" and "TRS" in row["Primary Asset ID"].upper():
         return "e"  # equity
     elif row["Investment Type"] == "DERV" and (
@@ -105,6 +114,11 @@ print(f" {timediff(start_time, time.time())} setting up functions\n")
 # read in unique security dataframe from earlier process and saved as 'issuers_1.xlsx' to use as input
 start_time = time.time()
 print(f"Reading in unique securities which were assigned issuers earlier ...")
+
+# uniques_cols = ['Investment Type', 'i Issue Name', 'Primary Asset ID', 'CCY', 'Reg28 Classification',
+#                 'End Market Value', 'Percentage of Market Value', 'Closing Exposure PA', 'Issuer', 'CLN', 'FRN',
+#                 'ILB', 'BESA', 'BESA_MAYBE', 'repo', 'margin', 'Date', 'MedCirc', 'GovGuar', 'Term', 'Derivative', 'Counterparty']
+#                  # excl 'Entity Name', 'MedCirc062022', 'MedCirc122023'
 
 uniques_cols = [
     "Investment Type",
@@ -129,8 +143,12 @@ uniques_cols = [
     "Term",
     "Derivative",
     "Counterparty",
+    "FundX",
+    "PropertyX",
+    "PEFX",
+    "HFX",
+    "CommodityX",
 ]
-# excl 'Entity Name', 'MedCirc062022', 'MedCirc122023'
 
 uniques = pd.read_excel(iss_1, sheet_name="uniques", usecols=uniques_cols)
 
@@ -138,42 +156,37 @@ print(
     f" {timediff(start_time, time.time())} reading in unique securities which were assigned issuers earlier\n"
 )
 
+
 # import the structures file with security attributes
 start_time = time.time()
 print(f"Getting security attribute columns ...")
 
 # specify columns to include in 'reg' dataframe
 reg_cols = [
-    "Issuer Name",
-    "vs structures",
-    "MCap",
-    "Ticker",
-    "Deb",
-    "Exchange",
-    "Foreign",
+    "issuer name",
+    "mcap",
+    "ticker",
+    "deb",
+    "exchange",
+    "foreign",
     "GPL",
-    "Fund",
-    "Bank",
-    "Debt",
-    "Equity",
-    "Property",
-    "Commodity",
-    "Partg_emplr",
-    "HL",
+    "fund",
+    "bank",
+    "property",
+    "commodity",
+    "partg_emplr",
     "HF",
     "PEF",
     "fnd_typ",
-    "Infra",
+    "listed_guarantor",
+    "infra",
     "DI900",
 ]
 
 # get the 'reg' sheet with market caps
-reg = pd.read_excel(pth_struct, sheet_name="reg", usecols=reg_cols)
+reg = pd.read_excel(pth_struct, sheet_name="issuers", usecols=reg_cols)
 
 print(f" {timediff(start_time, time.time())} getting security attribute columns\n")
-
-merged = uniques.merge(reg, left_on="Issuer", right_on="Issuer Name", how="left")
-merged
 
 # with all non-accrual and non-FWD instruments assigned an issuer, look up instrument attributes by a merge with the funds
 start_time = time.time()
@@ -182,9 +195,9 @@ print(
 )
 
 # https://www.youtube.com/watch?v=AHS925L8JVk&t=9sb
-merged = uniques.merge(reg, left_on="Issuer", right_on="Issuer Name", how="left")
+merged = uniques.merge(reg, left_on="Issuer", right_on="issuer name", how="left")
 
-# save the merged workbook to mergd
+# save the merged workbook to 'mergd'
 merged.to_excel(mergd, sheet_name="merged", index=False)
 
 print(
@@ -208,20 +221,22 @@ start_time = time.time()
 print(f"Identifying equities and securities without market caps ...\n")
 
 eq_no_MCap = merged.loc[
-    (merged["MCap"].isnull().values) & (merged["Investment Type"] == "EQ")
+    (merged["mcap"].isnull().values) & (merged["Investment Type"] == "EQ")
 ].drop_duplicates(subset="Primary Asset ID", keep="first")["Primary Asset ID"]
 
-no_MCap = merged.loc[(merged["MCap"].isnull().values)].drop_duplicates(
+no_MCap = merged.loc[(merged["mcap"].isnull().values)].drop_duplicates(
     subset="Primary Asset ID", keep="first"
 )["Primary Asset ID"]
+
 s = "y" if len(eq_no_MCap) == 1 else "ies"
 print(
-    f" {len(eq_no_MCap)} equit{s} without market caps out of {len(no_MCap)} total equities: \n   {(', ').join(eq_no_MCap)} \n"
+    f" {len(eq_no_MCap)} equit{s} without market caps out of {len(no_MCap)} total equities: \n   {(', ').join(eq_no_MCap)}\n"
 )
 
 print(
-    f"{timediff(start_time, time.time())} identifying equities and securities without market caps\n"
+    f" {timediff(start_time, time.time())} identifying equities and securities without market caps\n"
 )
+
 
 # (3) identify derivative asset classes
 start_time = time.time()
@@ -237,13 +252,15 @@ print(
 )
 # print(f' {len(merged["dX"].unique())} derivative ("OP", "FT", "DERV") securities')
 
-print(f"{timediff(start_time, time.time())} identifying derivative asset classes\n")
+print(f" {timediff(start_time, time.time())} identifying derivative asset classes\n")
+
 
 # ### TEST ###
 # overrides  = pd.read_excel(pth_struct, sheet_name = 'overrides')  # security data overrides
 # for instr in overrides['InstrCode']: #https://www.geeksforgeeks.org/different-ways-to-iterate-over-rows-in-pandas-dataframe/
 #     #instr = overrides['InstrCode'][i]
 #     print(i, instr, overrides['Date'][i], isinstance(overrides['Date'][i], datetime.date), overrides['Date'][i] == "")
+
 
 # insert overridden instrument codes
 start_time = time.time()
@@ -292,13 +309,13 @@ for i in range(
                 overrides["Term"][i]
             )
 
-        # # test for 'MCap'
-        # if isinstance(overrides['MCap'][i], float):
-        #     merged.at[merged[merged['Primary Asset ID'] == instr].index[0], 'MCap'    ] = overrides['MCap'    ][i]
+        # # test for 'mcap'
+        # if isinstance(overrides['mcap'][i], float):
+        #     merged.at[merged[merged['Primary Asset ID'] == instr].index[0], 'mcap'    ] = overrides['mcap'    ][i]
 
-        # # test for 'Property'
-        # if isinstance(overrides['Property'][i], str):
-        #     merged.at[merged[merged['Primary Asset ID'] == instr].index[0], 'Property'] = overrides['Property'][i]
+        # # test for 'property'
+        # if isinstance(overrides['property'][i], str):
+        #     merged.at[merged[merged['Primary Asset ID'] == instr].index[0], 'property'] = overrides['property'][i]
 
         # # test for 'Government guarantee'
         # if isinstance(overrides['GovGuar'][i], str):
@@ -306,39 +323,34 @@ for i in range(
 
 print(f" {timediff(start_time, time.time())} inserting overridden instrument codes\n")
 
-# function that creates a new column based on the values of other columns
-# Python: Check if String Contains Substring https://stackabuse.com/python-check-if-string-contains-substring/
 
 start_time = time.time()
 print("Defining the Reg 28 classification function ...")
 
 
 def classify_Reg28(row):
+
     # 1.1(a) Cash with SARB-registered bank
     if (
         (
-            (
-                res(["CASH", "FWD"], row["Investment Type"])
-                or (row["dX"] == "c")
-                or (row["dX"] == "d")
-            )
+            res(["CASH", "FWD"], row["Investment Type"])
+            or (row["dX"] == "c" or row["dX"] == "d")
             and (row["margin"] != 1)
             and (row["Primary Asset ID"] != "SAFEX")
-            and (row["Bank"] == "s")
+            and (row["Primary Asset ID"] != "VARMARG")
+            and (row["Investment Type"] != "DERV")
+            and (row["bank"] == "s")
             and (row["CCY"] == "ZAR")
-            and (row["rpc"] != "RPC")
+            and (row["repo"] != "RPC")
         )
         or (row["Investment Type"] == "SYTH")
-        or (
-            (row["Derivative"] == "Swap" or row["Derivative"] == "Currency Forward")
-            and (row["CCY"] == "ZAR")
-        )
+        or (row["Derivative"] == "Currency Forward" and row["CCY"] == "ZAR")
     ):
         return "1.1(a)"
 
     # # 1.1(b) Money market instruments with SARB registered bank
-    # elif res(['ST','FI'], row['Investment Type']) and (row['CCY'] == 'ZAR') and (row['Bank'] == 's') and (row['margin'] != 1)  or \
-    # ((row['Fund'] == 'f') and (row['fnd_typ'] == 'c') and (row['CCY'] == 'ZAR')):
+    # elif res(['ST','FI'], row['Investment Type']) and (row['CCY'] == 'ZAR') and (row['bank'] == 's') and (row['margin'] != 1)  or \
+    # ((row['fund'] == 'f') and (row['fnd_typ'] == 'c') and (row['CCY'] == 'ZAR')):
     #     return '1.1(b)'
 
     # 1.1(b) Money market instruments with SARB registered bank
@@ -346,34 +358,38 @@ def classify_Reg28(row):
         (
             res(["ST", "FI"], row["Investment Type"])
             and (row["CCY"] == "ZAR")
-            and (row["Bank"] == "s")
+            and (row["bank"] == "s")
             and (row["margin"] != 1)
-            and (row["Term"] < 396 or row["FRN"] == 1)
             and (row["repo"] != "RPC")
+            and (row["Term"] < 396 or row["FRN"] == 1)
         )
-        or ((row["Fund"] == "f") and (row["fnd_typ"] == "c") and (row["CCY"] == "ZAR"))
+        or ((row["fund"] == "f") and (row["fnd_typ"] == "c") and (row["CCY"] == "ZAR"))
         or (
-            ("CALL" in row["Primary Asset ID"])
-            and (row["Bank"] == "s")
+            (
+                "CALL" in row["Primary Asset ID"].upper()
+                or " CALL " in row["i Issue Name"].upper()
+            )
+            and (row["bank"] == "s")
             and (row["CCY"] == "ZAR")
         )
+        or (row["Derivative"] == "Swap")
     ):
         return "1.1(b)"
 
     # 1.1(c) Positive margin account balance with SARB registered bank
     elif (
-        ((row["margin"] == 1) and (row["Bank"] == "s") and (row["CCY"] == "ZAR"))
+        ((row["margin"] == 1) and (row["bank"] == "s") and (row["CCY"] == "ZAR"))
         or (row["Primary Asset ID"] == "SAFEX")
         or (row["Primary Asset ID"] == "VARMARG")
     ):
         return "1.1(c)"
 
-    # 1.2(a) Cash with a foreign bank
+    # 1.2(a) Cash with a foreign bank (including foreign currency deposits with a local bank)
     elif (
         (
             res(["ST", "CASH", "FWD", "SYTH"], row["Investment Type"])
             and (
-                (row["Bank"] == "b") or (row["Bank"] == "s") and (row["repo"] != "RPC")
+                (row["bank"] == "b") or (row["bank"] == "s") and (row["repo"] != "RPC")
             )
         )
         or (res(["OP", "FT"], row["Investment Type"]) and row["dX"] == "c")
@@ -385,11 +401,11 @@ def classify_Reg28(row):
         return "1.2(a)"
 
     # 1.2(b) Cash with an African bank
-    elif res(["ST", "CASH"], row["Investment Type"]) and row["Bank"] == "a":
+    elif res(["ST", "CASH", "FI"], row["Investment Type"]) and row["bank"] == "a":
         return "1.2(b)"
 
     # 1.2(c) Money market instruments with foreign bank
-    # elif ((row['margin'] == 1) and (row['Bank'] != 's') and (row['CCY'] != 'ZAR')) or \
+    # elif ((row['margin'] == 1) and (row['bank'] != 's') and (row['CCY'] != 'ZAR')) or \
     elif (
         ((row["margin"] == 1) and (row["CCY"] != "ZAR"))
         or (
@@ -397,9 +413,9 @@ def classify_Reg28(row):
             or row["dX"] == "c"
             or ((row["Investment Type"] == "FI") and (row["Term"] < 396))
         )
-        and row["Bank"] == "b"
+        and row["bank"] == "b"
         or ((row["Issuer"] == "JSE Yield-X") and (row["dX"] == "c"))
-        or ((row["Fund"] == "f") and (row["fnd_typ"] == "c") and (row["CCY"] != "ZAR"))
+        or ((row["fund"] == "f") and (row["fnd_typ"] == "c") and (row["CCY"] != "ZAR"))
     ):
         return "1.2(c)"
 
@@ -422,38 +438,38 @@ def classify_Reg28(row):
     # 2.1(c)(i) Debt issued by SARB registered bank with MCap > R20bn
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "s"
-        and (row["Term"] >= 396 or row["repo"] == "RPC")
-        and row["MCap"] > 20
+        and (row["bank"] == "s")
+        and ((row["Term"] >= 396) or (row["repo"] == "RPC"))
+        and (row["mcap"] > 20)
     ):
         return "2.1(c)(i)"
 
     # 2.1(c)(ii) Debt issued by SARB registered bank with R2bn < MCap < R20bn
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "s"
-        and (row["Term"] >= 396 or row["repo"] == "RPC")
-        and row["MCap"] < 20
-        and row["MCap"] > 2
+        and (row["bank"] == "s")
+        and ((row["Term"] >= 396) or (row["repo"] == "RPC"))
+        and (row["mcap"] < 20)
+        and (row["mcap"] > 2)
     ):
         return "2.1(c)(ii)"
 
     # 2.1(c)(iii) Debt issued by SARB registered bank with MCap < R2bn
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "s"
-        and (row["Term"] >= 396 or row["repo"] == "RPC")
-        and row["MCap"] < 20
-        and row["MCap"] < 2
+        and (row["bank"] == "s")
+        and ((row["Term"] >= 396) or (row["repo"] == "RPC"))
+        and (row["mcap"] < 20)
+        and (row["mcap"] < 2)
     ):
         return "2.1(c)(iii)"
 
     # 2.1(c)(iv) Debt issued by SARB registered, unlisted bank
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "s"
+        and (row["bank"] == "s")
         and (row["Term"] >= 396 or pd.isna(row["Term"]) or row["repo"] == "RPC")
-        and (row["MCap"] == 0 or pd.isna(row["MCap"]))
+        and (row["mcap"] == 0 or pd.isna(row["mcap"]))
     ):
         return "2.1(c)(iv)"
 
@@ -464,52 +480,57 @@ def classify_Reg28(row):
     # 2.2(c)(i) Debt issued by foreign bank with MCap > R20bn
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "b"
-        and (row["Term"] >= 396 or row["repo"] == "RPC")
-        and row["MCap"] > 20
+        and (row["bank"] == "b")
+        and ((row["Term"] >= 396) or (row["repo"] == "RPC"))
+        and (row["mcap"] > 20)
     ):
         return "2.2(c)(i)"
 
     # 2.2(c)(ii) Debt issued by foreign bank with R2bn < MCap < R20bn
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "b"
-        and (row["Term"] >= 396 or row["repo"] == "RPC")
-        and row["MCap"] < 20
-        and row["MCap"] > 2
+        and (row["bank"] == "b")
+        and ((row["Term"] >= 396) or (row["repo"] == "RPC"))
+        and (row["mcap"] < 20)
+        and (row["mcap"] > 2)
     ):
         return "2.2(c)(ii)"
 
     # 2.2(c)(iii) Debt issued by foreign bank with MCap < R2bn
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "b"
-        and (row["Term"] >= 396 or row["repo"] == "RPC")
-        and row["MCap"] < 20
-        and row["MCap"] < 2
+        and (row["bank"] == "b")
+        and ((row["Term"] >= 396) or (row["repo"] == "RPC"))
+        and (row["mcap"] < 20)
+        and (row["mcap"] < 2)
     ):
         return "2.2(c)(iii)"
 
     # 2.2(c)(iv) Debt issued by unlisted foreign bank
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and row["Bank"] == "b"
-        and (row["Term"] >= 396 or pd.isna(row["Term"]) or row["repo"] == "RPC")
-        and pd.isna(row["MCap"])
+        and (row["bank"] == "b")
+        and ((row["Term"] >= 396) or (pd.isna(row["Term"])) or (row["repo"] == "RPC"))
+        and pd.isna(row["mcap"])
     ):
         return "2.2(c)(iv)"
 
     # 2.1(d)(i) Listed debt issued by PFMA entities and by listed corporates
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or (row["dX"] == "d"))
-        and ((row["GPL"] == "p") or (row["MCap"] > 0))
+        and (
+            (row["GPL"] == "p")
+            or (row["GPL"] == "la")
+            or (row["listed_guarantor"] == "LG")
+            or (row["mcap"] > 0)
+        )
         and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
         and (row["CCY"] == "ZAR")
         or (
-            (row["Fund"] == "f")
+            (row["fund"] == "f")
             and (row["fnd_typ"] == "d")
             and (row["CCY"] == "ZAR")
-            and (row["Infra"] != "i")
+            and (row["infra"] != "i")
         )
     ):
         return "2.1(d)(i)"
@@ -517,7 +538,12 @@ def classify_Reg28(row):
     # 2.1(d)(ii) Unlisted debt issued by PFMA entities and by listed corporates
     elif (
         (res(["FI", "ST"], row["Investment Type"]) or row["dX"] == "d")
-        and (row["GPL"] == "p" or row["MCap"] > 0)
+        and (
+            (row["GPL"] == "p")
+            or (row["GPL"] == "la")
+            or (row["listed_guarantor"] == "LG")
+            or (row["mcap"] > 0)
+        )
         and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
         and row["CCY"] == "ZAR"
     ):
@@ -525,44 +551,50 @@ def classify_Reg28(row):
 
     # 2.1(e)(i) Listed debt issued by unlisted non-SOE corporates
     elif (
-        res(["FI", "ST"], row["Investment Type"])
-        and row["GPL"] != "p"
-        and pd.isna(row["MCap"])
+        (res(["FI", "ST"], row["Investment Type"]) and row["CCY"] == "ZAR")
+        and (
+            pd.isna(row["GPL"])
+            and row["listed_guarantor"] != "LG"
+            and (pd.isna(row["mcap"]) or row["mcap"] == 0)
+        )
         and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
-        and row["CCY"] == "ZAR"
     ):
         return "2.1(e)(i)"
 
     # 2.1(e)(ii) Unlisted debt issued by unlisted non-SOE corporates
     elif (
-        res(["FI", "ST"], row["Investment Type"])
-        and (row["GPL"] != "p")
-        and (pd.isna(row["MCap"]) or (row["MCap"] == 0))
-        and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
-        and (row["CCY"] == "ZAR")
-        or (
-            (row["Fund"] == "f")
-            and (row["fnd_typ"] == "d")
-            and (row["CCY"] == "ZAR")
-            and (row["Infra"] == "i")
+        (res(["FI", "ST"], row["Investment Type"]) and row["CCY"] == "ZAR")
+        and (
+            pd.isna(row["GPL"])
+            and row["listed_guarantor"] != "LG"
+            and (pd.isna(row["mcap"]) or row["mcap"] == 0)
         )
+        and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
+        or (row["fund"] == "f" and row["fnd_typ"] == "d" and row["infra"] == "i")
     ):
         return "2.1(e)(ii)"
 
     # 2.2(d)(i) Listed foreign debt issued by listed corporates
     elif (
         res(["FI", "ST"], row["Investment Type"])
-        and ((row["GPL"] == "p") or (row["MCap"] > 0))
+        and (
+            (row["GPL"] == "p")
+            or (row["listed_guarantor"] == "LG")
+            or (row["mcap"] > 0)
+        )
         and (row["CCY"] != "ZAR")
-        and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
-        or ((row["Fund"] == "f") and (row["fnd_typ"] == "d") and (row["CCY"] != "ZAR"))
+        or ((row["fund"] == "f") and (row["fnd_typ"] == "d") and (row["CCY"] != "ZAR"))
     ):
         return "2.2(d)(i)"
 
     # 2.2(d)(ii) Unlisted foreign debt issued listed corporates
     elif (
         res(["FI", "ST"], row["Investment Type"])
-        and (row["GPL"] == "p" or row["MCap"] > 0)
+        and (
+            (row["GPL"] == "p")
+            or (row["listed_guarantor"] == "LG")
+            or (row["mcap"] > 0)
+        )
         and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
         and row["CCY"] != "ZAR"
     ):
@@ -571,8 +603,9 @@ def classify_Reg28(row):
     # 2.2(e)(i) Listed foreign debt issued by unlisted corporates
     elif (
         res(["FI", "ST"], row["Investment Type"])
-        and row["GPL"] != "p"
-        and (pd.isna(row["MCap"]) or row["MCap"] == 0)
+        and (row["GPL"] != "p")
+        and (row["listed_guarantor"] != "LG")
+        and (pd.isna(row["mcap"]) or row["mcap"] == 0)
         and (row["BESA"] == "B" or row["BESA_MAYBE"] == 1)
         and row["CCY"] != "ZAR"
     ):
@@ -581,8 +614,9 @@ def classify_Reg28(row):
     # 2.2(e)(ii) Unlisted foreign debt issued by unlisted corporates
     elif (
         res(["FI", "ST"], row["Investment Type"])
-        and row["GPL"] != "p"
-        and pd.isna(row["MCap"])
+        and (row["GPL"] != "p")
+        and (row["listed_guarantor"] != "LG")
+        and pd.isna(row["mcap"])
         and (row["BESA"] != "B" and row["BESA_MAYBE"] != 1)
         and row["CCY"] != "ZAR"
     ):
@@ -590,12 +624,12 @@ def classify_Reg28(row):
 
     # 3.1(a)(i) Listed ordinary and preference non-property shares, market cap >= R20bn
     elif (
-        ((row["Investment Type"] == "EQ" and row["MCap"] >= 20) or (row["dX"] == "e"))
+        ((row["Investment Type"] == "EQ" and row["mcap"] >= 20) or (row["dX"] == "e"))
         and (row["CCY"] == "ZAR")
-        and (row["Property"] != "P")
+        and (row["property"] != "P")
         and (row["Investment Type"] != "SYTH")
         or (
-            (row["Fund"] == "f")
+            (row["fund"] == "f")
             and (row["fnd_typ"] == "e")
             and (row["CCY"] == "ZAR")
             and (row["Investment Type"] != "SYTH")
@@ -606,38 +640,38 @@ def classify_Reg28(row):
     # 3.1(a)(ii) Listed ordinary and preference non-property shares, market cap >= R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] >= 2
+        and row["mcap"] >= 2
         and row["CCY"] == "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "3.1(a)(ii)"
 
     # 3.1(a)(iii) Listed ordinary and preference non-property shares, market cap < R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] < 2
+        and row["mcap"] < 2
         and row["CCY"] == "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "3.1(a)(iii)"
 
     # 3.1(b) Unlisted ordinary and preference non-property shares
     elif (
         row["Investment Type"] == "EQ"
-        and pd.isna(row["MCap"])
+        and pd.isna(row["mcap"])
         and row["CCY"] == "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "3.1(b)"
 
     # 3.2(a)(i) Listed ordinary and preference non-property shares, market cap >= R20bn
     elif (
-        ((row["Investment Type"] == "EQ") and (row["MCap"] >= 20) or (row["dX"] == "e"))
+        ((row["Investment Type"] == "EQ") and (row["mcap"] >= 20) or (row["dX"] == "e"))
         and (row["CCY"] != "ZAR")
-        and (row["Property"] != "P")
+        and (row["property"] != "P")
         and (row["Investment Type"] != "SYTH")
     ) or (
-        (row["Fund"] == "f")
+        (row["fund"] == "f")
         and (row["fnd_typ"] == "e")
         and (row["CCY"] != "ZAR")
         and (row["Investment Type"] != "SYTH")
@@ -647,114 +681,114 @@ def classify_Reg28(row):
     # 3.2(a)(ii) Listed foreign ordinary and preference non-property shares, market cap >= R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] >= 2
+        and row["mcap"] >= 2
         and row["CCY"] != "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "3.2(a)(ii)"
 
     # 3.2(a)(iii) Listed foreign ordinary and preference non-property shares, market cap < R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] < 2
+        and row["mcap"] < 2
         and row["CCY"] != "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "3.2(a)(iii)"
 
     # 3.2(b) Unlisted foreign ordinary and preference non-property shares
     elif (
         row["Investment Type"] == "EQ"
-        and pd.isna(row["MCap"])
+        and pd.isna(row["mcap"])
         and row["CCY"] != "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "3.2(b)"
 
     # 4.1(a)(i) Listed property ordinary and preference shares, market cap >= R20bn
     elif (
-        ((row["Investment Type"] == "EQ" and row["MCap"] >= 10) or row["dX"] == "p")
+        ((row["Investment Type"] == "EQ" and row["mcap"] >= 10) or row["dX"] == "p")
         and row["CCY"] == "ZAR"
-        and row["Property"] == "P"
-        or ((row["Fund"] == "f") and (row["fnd_typ"] == "p") and (row["CCY"] == "ZAR"))
+        and row["property"] == "P"
+        or ((row["fund"] == "f") and (row["fnd_typ"] == "p") and (row["CCY"] == "ZAR"))
     ):
         return "4.1(a)(i)"
 
     # 4.1(a)(ii) Listed ordinary and preference property shares, market cap >= R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] >= 3
+        and row["mcap"] >= 3
         and row["CCY"] == "ZAR"
-        and row["Property"] == "P"
+        and row["property"] == "P"
     ):
         return "4.1(a)(ii)"
 
     # 4.1(a)(iii) Listed ordinary and preference property shares, market cap < R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] < 3
+        and row["mcap"] < 3
         and row["CCY"] == "ZAR"
-        and row["Property"] == "P"
+        and row["property"] == "P"
     ):
         return "4.1(a)(iii)"
 
     # 4.1(b) Unlisted ordinary and preference property shares
     elif (
         row["Investment Type"] == "EQ"
-        and pd.isna(row["MCap"])
+        and pd.isna(row["mcap"])
         and row["CCY"] == "ZAR"
-        and row["Property"] == "P"
+        and row["property"] == "P"
     ):
         return "4.1(b)"
 
     # 4.2(a)(i) Listed foreign ordinary and preference property shares, market cap >= R20bn
     elif (
-        ((row["Investment Type"] == "EQ" and row["MCap"] >= 10) or row["dX"] == "p")
+        ((row["Investment Type"] == "EQ" and row["mcap"] >= 10) or row["dX"] == "p")
         and row["CCY"] != "ZAR"
-        and row["Property"] == "P"
-        or ((row["Fund"] == "f") and (row["fnd_typ"] == "p") and (row["CCY"] != "ZAR"))
+        and row["property"] == "P"
+        or ((row["fund"] == "f") and (row["fnd_typ"] == "p") and (row["CCY"] != "ZAR"))
     ):
         return "4.2(a)(i)"
 
     # 4.2(a)(ii) Listed foreign ordinary and preference property shares, market cap >= R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] >= 3
+        and row["mcap"] >= 3
         and row["CCY"] != "ZAR"
-        and row["Property"] == "P"
+        and row["property"] == "P"
     ):
         return "4.2(a)(ii)"
 
     # 4.2(a)(iii) Listed foreign ordinary and preference property shares, market cap < R2bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] < 3
+        and row["mcap"] < 3
         and row["CCY"] != "ZAR"
-        and row["Property"] == "P"
+        and row["property"] == "P"
     ):
         return "4.2(a)(iii)"
 
     # 4.2(b) Unlisted foreign ordinary and preference property shares
     elif (
         row["Investment Type"] == "EQ"
-        and pd.isna(row["MCap"])
+        and pd.isna(row["mcap"])
         and row["CCY"] != "ZAR"
-        and row["Property"] == "P"
+        and row["property"] == "P"
     ):
         return "4.2(b)"
 
     # 5.1(a) Local commodities - NewGold, NewPlats and NewPalladium
     # if search(  'NEWGOLD', row['i Issue Name'].upper()) and row['CCY'] == 'ZAR' and \
     # row['Primary Asset ID'].find('GLD') != -1:
-    elif (row["CCY"] == "ZAR") and (row["Commodity"] == "au"):
+    elif (row["CCY"] == "ZAR") and (row["commodity"] == "au"):
         return "5.1(a)(i)"  # local commodity, gold
-    elif (row["CCY"] == "ZAR") and (row["dX"] == "r") and (row["Commodity"] != "au"):
+    elif (row["CCY"] == "ZAR") and (row["dX"] == "r") and (row["commodity"] != "au"):
         return "5.1(a)(ii)"  # local commodity, non-gold
 
     # 5.2(a) Foreign commodities
-    elif (row["CCY"] != "ZAR") and (row["Commodity"] == "au"):
+    elif (row["CCY"] != "ZAR") and (row["commodity"] == "au"):
         return "5.2(a)(i)"  # foreign commodity, gold
-    elif (row["CCY"] != "ZAR") and (row["dX"] == "r") and (row["Commodity"] != "au"):
+    elif (row["CCY"] != "ZAR") and (row["dX"] == "r") and (row["commodity"] != "au"):
         return "5.1(a)(ii)"  # foreign commodity, non-gold
 
     # 8. Hedge funds
@@ -794,6 +828,7 @@ reg30_2b = ["CLN915", "CLN932", "CLN945", "CLN947", "CLN994"]  # per Circ 3 of 2
 
 
 def classify_Reg30(row):
+
     # Give precedence to the five securities held at 31 Dec 2024 and reclassified by the CMS as '7(b)'
     if (
         (row["Primary Asset ID"] == "CLN915")
@@ -814,23 +849,23 @@ def classify_Reg30(row):
     # # or (row['repo'] == 'RPC') \
     # # elif (row['Derivative'] is np.nan) \
     # elif res(['FWD', 'FT', 'OP', 'DERV'], row['Investment Type']) \
-    #     or ((row['margin'] == 1) and (row['Bank'] == 's')) \
+    #     or ((row['margin'] == 1) and (row['bank'] == 's')) \
     #     or (row['repo'] == 'RPC') \
     #     or ((row['Investment Type'] == 'FI') \
     #         and (row['BESA'    ] != 'B') \
-    #         and (row['Property'] != 'P') \
-    #         and (row['Deb'     ] != 'd') \
+    #         and (row['property'] != 'P') \
+    #         and (row['deb'     ] != 'd') \
     #         and (row['GPL'     ] not in ['p', 'G', 'la'])
-    #         and (row['Bank'    ] != 's')):
+    #         and (row['bank'    ] != 's')):
     #     return '7(a)(ii)'
 
     # 7(a)(ii) "Other" securities
-    elif ((row["margin"] == 1) and (row["Bank"] == "s")) or (
+    elif ((row["margin"] == 1) and (row["bank"] == "s")) or (
         (row["Derivative"] is not np.nan)
         and (row["CLN"] != 1)
         and (row["BESA"] != "B")
-        and (row["Property"] != "P")
-        and (row["Deb"] != "d")
+        and (row["property"] != "P")
+        and (row["deb"] != "d")
         and (row["GPL"] not in ["p", "G", "la"])
         and (row["Investment Type"] != "SYTH")
         or (
@@ -839,7 +874,7 @@ def classify_Reg30(row):
         )
     ):
         return "7(a)(ii)"
-    # and (row['Bank'] is not np.nan)
+    # and (row['bank'] is not np.nan)
     # simplified filter based on '7(a)(ii)' as identified in issuers_2_31Jul2025 tab 'R30 7(a)(ii) 200'
 
     # 1(a)(i) Cash with SARB-registered bank with DI900 >= R5bn, including margin account balances
@@ -849,7 +884,7 @@ def classify_Reg30(row):
             or res(["CASH", "ST"], row["Investment Type"])
             or row["margin"] == 1
         )
-        and row["Bank"] == "s"
+        and row["bank"] == "s"
         and row["DI900"] >= 5
     ) or (row["Investment Type"] == "SYTH"):
         return "1(a)(i)"
@@ -861,7 +896,7 @@ def classify_Reg30(row):
             or res(["CASH", "ST", "SYTH"], row["Investment Type"])
             or row["margin"] == 1
         )
-        and row["Bank"] == "s"
+        and row["bank"] == "s"
         and row["DI900"] >= 0.1
     ):
         return "1(a)(ii)"
@@ -879,7 +914,7 @@ def classify_Reg30(row):
             or res(["CASH", "ST", "SYTH"], row["Investment Type"])
             or row["dX"] == "c"
         )
-        and (row["Bank"] == "a" or row["Bank"] == "b")
+        and (row["bank"] == "a" or row["bank"] == "b")
         or row["Primary Asset ID"] == "0649317"
     ):
         return "1(b)(i)"
@@ -933,30 +968,30 @@ def classify_Reg30(row):
         return "2(a)(x)"
 
     # 2(a)(xi) Debt issued by SARB-registered bank with DI900 >= R5bn
-    elif row["Bank"] == "s" and pd.isna(row["repo"]) and row["DI900"] >= 5:
+    elif row["bank"] == "s" and pd.isna(row["repo"]) and row["DI900"] >= 5:
         return "2(a)(xi)"
 
     # 2(a)(xii) Debt issued by SARB-registered bank with DI900 >= 0.1bn
-    elif row["Bank"] == "s" and pd.isna(row["repo"]) and row["DI900"] >= 0.1:
+    elif row["bank"] == "s" and pd.isna(row["repo"]) and row["DI900"] >= 0.1:
         return "2(a)(xii)"
 
     # 2(a)(xiii) Corporate debt listed on BESA and included in OTHI or ALBI
     # elif res(['FI', 'ST'], row['Investment Type']) and row['BESA'] == 'B' and row['CCY'] == 'ZAR' and \
-    # pd.isna(row['GPL']) and pd.isna(row['Bank']):
+    # pd.isna(row['GPL']) and pd.isna(row['bank']):
     # return '2(a)(xiii)'
 
-    # elif res(['FI', 'ST'], row['Investment Type']) and row['CCY'] == 'ZAR' and row['Exchange'] != 'CTSE' \
-    # and row['Deb'] != 'd' and row['repo'] != 'RPC' and row['Property'] != 'P':
+    # elif res(['FI', 'ST'], row['Investment Type']) and row['CCY'] == 'ZAR' and row['exchange'] != 'CTSE' \
+    # and row['deb'] != 'd' and row['repo'] != 'RPC' and row['property'] != 'P':
     # return '2(a)(xiv)'
 
     elif (
         res(["FI", "ST"], row["Investment Type"])
         and row["CCY"] == "ZAR"
-        and row["Deb"] != "d"
+        and row["deb"] != "d"
         and row["repo"] != "RPC"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
-        return "2(a)(xiv)"  # removed and row['Exchange'] != 'CTSE' for Medical Schemes Circular 11 of 2024
+        return "2(a)(xiv)"  # removed and row['exchange'] != 'CTSE' for Medical Schemes Circular 11 of 2024
 
     # 2(b)(i) Foreign debt
     elif (
@@ -971,7 +1006,7 @@ def classify_Reg30(row):
     # 3(a)(i) SA property
     elif (
         res(["EQ", "FI"], row["Investment Type"])
-        and row["Property"] == "P"
+        and row["property"] == "P"
         and row["CCY"] == "ZAR"
     ):
         return "3(a)(i)"
@@ -979,7 +1014,7 @@ def classify_Reg30(row):
     # 3(b) Foreign property
     elif (
         res(["EQ", "FI"], row["Investment Type"])
-        and row["Property"] == "P"
+        and row["property"] == "P"
         and row["CCY"] != "ZAR"
     ):
         return "3(b)"
@@ -988,122 +1023,122 @@ def classify_Reg30(row):
     elif (
         row["Investment Type"] == "EQ"
         and row["CCY"] == "ZAR"
-        and row["Property"] != "P"
-        and (row["Exchange"] == "DCVC" or row["exchange"] is np.nan)
+        and row["property"] != "P"
+        and (row["exchange"] == "DCVC" or row["exchange"] is np.nan)
     ):
         return "4(a)(i)"
 
     # 4(a)(ii)(i) JSE Listed equity with market cap > R50bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] > 50
+        and row["mcap"] > 50
         and row["CCY"] == "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "4(a)(ii)(i)"
 
     # 4(a)(ii)(ii) JSE Listed equity with market cap > R5bn
     elif (
         row["Investment Type"] == "EQ"
-        and row["MCap"] >= 5
+        and row["mcap"] >= 5
         and row["CCY"] == "ZAR"
-        and row["Property"] != "P"
+        and row["property"] != "P"
     ):
         return "4(a)(ii)(ii)"
 
     # 4(a)(ii)(iii) JSE Listed equity with market cap < R5bn
     elif (
-        ((row["Investment Type"] == "EQ" and row["MCap"] < 5) or pd.isna(row["MCap"]))
+        ((row["Investment Type"] == "EQ" and row["mcap"] < 5) or pd.isna(row["mcap"]))
         and row["CCY"] == "ZAR"
-        and row["Property"] != "P"
-        and row["Deb"] != "d"
+        and row["property"] != "P"
+        and row["deb"] != "d"
     ):
         return "4(a)(ii)(iii)"
 
     # 4(a)(iii)(i) JSE Listed ETFs linked to JSE ALSI
     elif (
         row["CCY"] == "ZAR"
-        and row["Exchange"] == "XJSE"
-        and row["Fund"] == "f"
-        and "ALSI" in row["Issuer Name"]
+        and row["exchange"] == "XJSE"
+        and row["fund"] == "f"
+        and "ALSI" in row["issuer name"]
     ):
         return "4(a)(iii)(i)"
 
     # 4(a)(iii)(ii) JSE Listed ETFs not linked to JSE ALSI
     elif (
-        row["CCY"] == "ZAR" and row["Fund"] == "f" and "ALSI" not in row["Issuer Name"]
+        row["CCY"] == "ZAR" and row["fund"] == "f" and "ALSI" not in row["issuer name"]
     ):
         return "4(a)(iii)(ii)"
 
     # 4(a)(iv)(i) (Unlisted) CISes linked to the ALSI
     elif (
         row["CCY"] == "ZAR"
-        and pd.isna(row["Exchange"])
-        and row["Fund"] == "f"
-        and "ALSI" in row["Issuer Name"]
+        and pd.isna(row["exchange"])
+        and row["fund"] == "f"
+        and "ALSI" in row["issuer name"]
     ):
         return "4(a)(iv)(i)"
 
     # 4(a)(iv)(ii) (Unlisted) CISes linked to the ALSI
     elif (
         row["CCY"] == "ZAR"
-        and pd.isna(row["Exchange"])
-        and row["Fund"] == "f"
-        and "ALSI" not in row["Issuer Name"]
+        and pd.isna(row["exchange"])
+        and row["fund"] == "f"
+        and "ALSI" not in row["issuer name"]
     ):
         return "4(a)(iv)(ii)"
 
     # 4(a)(v)(i) Insurance policies linked to the JSE ALSI
     elif (
         row["CCY"] == "ZAR"
-        and pd.isna(row["Exchange"])
-        and row["Fund"] == "p"
-        and "ALSI" in row["Issuer Name"]
+        and pd.isna(row["exchange"])
+        and row["fund"] == "p"
+        and "ALSI" in row["issuer name"]
     ):
         return "4(a)(v)(i)"
 
     # 4(a)(v)(ii) Insurance policies linked to the JSE ALSI
     elif (
         row["CCY"] == "ZAR"
-        and pd.isna(row["Exchange"])
-        and row["Fund"] == "p"
-        and "ALSI" not in row["Issuer Name"]
+        and pd.isna(row["exchange"])
+        and row["fund"] == "p"
+        and "ALSI" not in row["issuer name"]
     ):
         return "4(a)(v)(ii)"
 
     # 4(b)
-    elif (row["Investment Type"] == "EQ" and row["Property"] != "P") and row[
+    elif (row["Investment Type"] == "EQ" and row["property"] != "P") and row[
         "CCY"
     ] != "ZAR":
         return "4(b)"
 
     # 5(a) SA corporate debentures
-    elif row["CCY"] == "ZAR" and row["Deb"] == "d":
+    elif row["CCY"] == "ZAR" and row["deb"] == "d":
         return "5(a)"
 
     # 5(b) Foreign corporate debentures
-    elif row["CCY"] != "ZAR" and row["Deb"] == "d":
+    elif row["CCY"] != "ZAR" and row["deb"] == "d":
         return "5(b)"
 
     # 6(a)(i) SA unlinked insurance policies
-    elif row["CCY"] == "ZAR" and pd.isna(row["Exchange"]) and row["Fund"] == "p":
+    elif row["CCY"] == "ZAR" and pd.isna(row["exchange"]) and row["fund"] == "p":
         return "6(a)(i)"
 
     # 6(a)(ii) SA Linked insurance policies
-    elif row["CCY"] == "ZAR" and pd.isna(row["Exchange"]) and row["Fund"] == "p":
+    elif row["CCY"] == "ZAR" and pd.isna(row["exchange"]) and row["fund"] == "p":
         return "6(a)(ii)"
 
     # 6(b) Foreign linked insurance policies
-    elif row["CCY"] != "ZAR" and pd.isna(row["Exchange"]) and row["Fund"] == "p":
+    elif row["CCY"] != "ZAR" and pd.isna(row["exchange"]) and row["fund"] == "p":
         return "6(b)"
 
     # 7(a)(i) SA inventories carried at lesser of book value and realisable value
-    elif row["CCY"] == "ZAR" and pd.isna(row["Exchange"]) and row["Fund"] == "i":
+    elif row["CCY"] == "ZAR" and pd.isna(row["exchange"]) and row["fund"] == "i":
         return "7(a)(i)"
 
     # 7(b) Foreign 'other' securities
-    elif (row["CCY"] != "ZAR" and pd.isna(row["Exchange"]) and row["Fund"] == "i") or (
-        (row["margin"] == 1) and (row["Bank"] == "b")
+    elif (row["CCY"] != "ZAR" and pd.isna(row["exchange"]) and row["fund"] == "i") or (
+        (row["margin"] == 1) and (row["bank"] == "b")
     ):
         return "7(b)"
 
@@ -1120,6 +1155,8 @@ print(
     f" {timediff(start_time, time.time())} defining the Reg 30 classification function\n"
 )
 
+merged[merged["ticker"] == "KAP SJ"]["mcap"]
+
 # (10) assign Reg 28 and reg 30 classifications to each security
 start_time = time.time()
 print("Classifying each security ...")
@@ -1128,11 +1165,6 @@ merged["Reg 28 Classification"] = merged.apply(lambda row: classify_Reg28(row), 
 merged["Reg 30 Classification"] = merged.apply(lambda row: classify_Reg30(row), axis=1)
 
 print(f" {timediff(start_time, time.time())} classifying each security\n")
-
-# access Excel application to open results sheet
-import win32com.client as win32  # library to convert xls to xlsx
-
-excel = win32.gencache.EnsureDispatch("Excel.Application")  # to open excel application
 
 # (15) identify securities with absent classifications
 start_time = time.time()
@@ -1163,15 +1195,15 @@ term_neg = merged[merged["Term"] < 0].drop_duplicates(
 uniques = merged.drop_duplicates(subset="Primary Asset ID", keep="first")
 
 # Securities without market caps # https://www.geeksforgeeks.org/filter-pandas-dataframe-with-multiple-conditions/
-no_MCap = merged[(merged["MCap"].isnull().values)].drop_duplicates(
+no_MCap = merged[(merged["mcap"].isnull().values)].drop_duplicates(
     subset="Primary Asset ID", keep="first"
 )
 
 # Equities without market caps # https://www.geeksforgeeks.org/filter-pandas-dataframe-with-multiple-conditions/
 eq_no_MCap = merged[
-    (merged["MCap"].isnull().values)
+    (merged["mcap"].isnull().values)
     & (merged["Investment Type"] == "EQ")
-    & (merged["Fund"] != "f")
+    & (merged["fund"] != "f")
 ].drop_duplicates(subset="Primary Asset ID", keep="first")
 
 # (16A)identifying securities assigned to RSA government
@@ -1300,22 +1332,32 @@ print(
 )
 
 print(
-    f'{timediff(start_time, time.time())} writing newly classified securities to "issuers_2.xlsx" and summarising them \n'
+    f' {timediff(start_time, time.time())} writing newly classified securities to "issuers_2.xlsx" and summarising them \n'
 )
+
 
 start_time = time.time()
 print(
     "Opening issuers_2 if derivatives or issuers unassigned or securities not categorised, ..."
 )
 
+# open "issuers_2.xlsx" conditionally
 if len(no_derv_ft_op) + len(uiss) + len(no_cat_r28) + len(no_cat_r30) > 0:
-    excel.Workbooks.Open(iss_2)
+    os.startfile(iss_2)
 
 print(
     f" {timediff(start_time, time.time())} opening issuers_2.xlsx if derivatives or issuers unassigned or securities not categorised",
     "\n",
 )
 
-print(
-    f" {timediff(start_time_issuers_2, time.time())} ISSUERS_2 COMPLETED \n ================================"
-)
+print(f" {timediff(start_time_issuers_2, time.time())} completing issuers_2.ipynb\n")
+
+
+print("\n\n#######################################")
+print("#                                   #")
+print("#          END issuers_2.py         #")
+print("#                                   #")
+print("#####################################\n\n")
+
+
+# os.startfile(iss_2)

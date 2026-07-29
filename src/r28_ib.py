@@ -3,7 +3,7 @@
 
 print("\n\n#################################")
 print("#                               #")
-print("#        START r28_ib.py        #")
+print("#        START r28_ib.py   X    #")
 print("#                               #")
 print("#################################\n\n")
 
@@ -36,6 +36,8 @@ from constants import (
     pth_schib_tmpl,
 )
 
+start_time0 = time.time()
+
 
 # get report data
 def get_inputs():
@@ -61,7 +63,7 @@ def get_inputs():
 
     s = "s" if len(funds) != 1 else ""
     print(
-        f"Schedule IB report{s} as at {rptDate.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n {fund_list}\n"
+        f"Schedule IB report{s} as at {rptDate.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n {(', ').join(fund_list)}\n"
     )
     # print('\n', f'{timediff(start_time, time.time())}: getting the Schedule IB report inputs with pd.read_excel() completed')
 
@@ -584,8 +586,12 @@ get_inputs()
 # loop
 doneReg28 = []
 noReg28 = []
-print(f"Compiling the Regulation 28 Schedule IB reports as at {rptDate.strftime('%d%b%Y')} ...")
-for fund in tqdm(funds["Funds"]):
+# print(f"Compiling the Regulation 28 Schedule IB reports as at {rptDate.strftime('%d%b%Y')} ...")
+# tqdm(range(start, n), desc="Processing batches"):
+for fund in tqdm(
+    funds["Funds"],
+    desc=f"Processing the Reg 28 Schedule IB reports as at {rptDate.strftime('%d%b%Y')} ...",
+):
     # print(f"{fund}")
     if os.path.isfile(
         os.path.join(pthReports, f"{fund} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx")
@@ -633,6 +639,6 @@ fund{'' if len(funds) - len(noReg28) == 1 else 's'}"
 
 print("\n\n#################################")
 print("#                               #")
-print("#         END r28_ib.py         #")
+print("#         END r28_ib.py   X     #")
 print("#                               #")
 print("#################################\n\n")

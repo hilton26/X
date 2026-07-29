@@ -14,6 +14,7 @@
 # !pip install ipynb
 # !pip show openpyxl
 
+import sys
 import time
 from datetime import datetime
 
@@ -173,7 +174,7 @@ def property(txt):
     import re
     from re import search
 
-    pattern = r"\b(\sREAL\s|PROPERT|REALTY|\sESTATE|REIT|ATTACQ|BURSTONE|MAS PLC|NEPI ROCKCASTLE|OCTODEC|FAIRVEST|HYPROP)\b"
+    pattern = r"\b(\sREAL\s|PROPERT|REALTY|PPTY|\sESTATE|REIT|ATTACQ|BURSTONE|MAS PLC|NEPI ROCKCASTLE|OCTODEC|FAIRVEST|HYPROP)\b"
     if re.search(pattern, str(txt).upper()):
         return "P"
 
@@ -224,12 +225,12 @@ def dater(folder_path, fund_name, dte):
     )
     wb.Close()
 
-    # print(f"    Downloaded file found and saved in {timediff(start_time, time.time())}")  # time to get file name
+    # print(f"    Downloaded file found and saved in
+    # {timediff(start_time, time.time())}")  # time to get file name
 
 
-# function to get latest file with specified extension in a given folder and chnage that file's name
-
-
+# function to get latest file with specified extension
+# in a given folder and change that file's name
 def latest_file(folder_path, suffix="csv", new_file_name="newt"):
     import glob, os
     from pathlib import Path
@@ -252,68 +253,111 @@ def latest_file(folder_path, suffix="csv", new_file_name="newt"):
     # return
 
 
-# an Eagle report lookup function, given seven parameters
-# def osprey(rpt_type, funds, d_from, d_to, name, sfx, al, xe):
-def osprey(rpt_type, funds, d_from, d_to, name, sfx):
-    # def osprey(rpt_type = 'r28i', funds = 'PABS, SMMAIF' as string, d_from as datetime, d_to as datetime, name, sfx = 'csv' as string,
-    # al = 'username' as string, xe = 'psw' as string):
+# Function to report date and selected summary sheet option
+def parn_de():
+
+    import pandas as pd
+    from constants import pthPy, pth_dl
+    from utilities import prior_working_day
+    from datetime import datetime
+    import os
+
+    print("Getting the reporting date and names derivative files ...")
+
+    df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
+        subset=[0]
+    )
+    k = df.iloc[2, 1]
+    rptDate = (
+        k if isinstance(k, datetime) else prior_working_day(datetime.today())
+    )  # prior working day or report date override; has type datetime()
+    summ_yn = df.iloc[3, 1]
+    dervthreshold = df.iloc[4, 1] * 100
+    funds = df[0].iloc[1:]
+
+    # derive holdings and derivatives file paths
+    fPARN = os.path.join(
+        pth_dl,
+        f"PARN ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
+    )
+
+    fDE = os.path.join(
+        pth_dl,
+        f"DERV ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
+    )
+
+    return fPARN, fDE, funds, rptDate, summ_yn, dervthreshold
+
+
+# An Eagle report lookup function, given seven parameters
+def osprey(rpt_type, funds, d_from, d_to, name, sfx="csv"):
     """
     Function:
-      To download a report from the online fund accounting system for a specified report type, funds, format, and dates
+        To download a report from the online fund accounting
+        system for a specified report type, funds, format, and dates
 
     Args:
-      rpt_type: A report name under Queries of the Eagle online application, including r28i, parn, derv, trad, scty, dflw, utps, fnav, tcrf, and cact
-      funds:    A comma-, but without spaces, separated string of fund codes, including the ones appended with "_C", .e.g., 'PABS,PPSBAL_C,SMMAIF'
-      d_from:   A start date for the report in datetime format, e.g., datetime(2025,5,1)
-      d_to:     An  end date for the report in datetime format, e.g., datetime(2025,5,30)
-      name:     A descriptive name to be added to the downloaded report to make it more identifiable
-      sfx:      A file name extension specifying the report format, i.e., 'xls' or 'csv'
-      al:       The user name for the online application
-      xe:       The user credential for the online application
+        rpt_type: A report name under Queries of the Eagle
+                  online application, including r28i, parn,
+                  derv, trad, scty, dflw, utps, fnav, tcrf, and cact
+        funds:    A comma-, but without spaces, separated string of
+                  fund codes, including the ones appended
+                  with "_C", .e.g., 'PABS,PPSBAL_C,SMMAIF'
+        d_from:   A start date for the report in datetime
+                  format, e.g., datetime(2025,5,1)
+        d_to:     An  end date for the report in datetime
+                  format, e.g., datetime(2025,5,30)
+        name:     A descriptive name to be added to the downloaded
+                  report to make it more identifiable
+        sfx:      A file name extension specifying the report
+                  format, i.e., 'xls' or 'csv'
+        al:       The user name for the online application
+        xe:       The user credential for the online application
 
     Returns:
-      A downloaded report in the local Downloads folder renamed to identify it
+        A downloaded report in the local Downloads folder
+        renamed to identify it
     """
 
-    # # (1) eagle report types, their short codes, and their URLs
-    # eagle_root = r"https://eagleportal.prescient.co.za/Queries/Query.aspx?rpt="
-    # report_types_dict = {
-    #     "r28i": [
-    #         "Reg 28 Report - Incl Effective Exposure",
-    #         eagle_root + "Reg28withExposure",
-    #     ],
-    #     "parn": ["Portfolio Analytics Report - New", eagle_root + "PortfolioAnalytics"],
-    #     "derv": ["Derivative Exposure", eagle_root + "DerivativeExposure"],
-    #     "trad": ["Trades Report", eagle_root + "TRANSACTION"],
-    #     "scty": ["Security Cross Reference", eagle_root + "SecurityCrossRef"],
-    #     "dflw": ["Daily Flows", eagle_root + "FLOWS"],
-    #     "utps": ["Unit Trust Prices", eagle_root + "UTPRICES"],
-    #     "fnav": ["Fund Net Asset Value", eagle_root + "NetAsset"],
-    #     "tcrf": ["Trades Cross Reference", eagle_root + "TRADES%20REFERENCE"],
-    #     "cact": ["Cash Activity Details", eagle_root + "CSHACTIVITY"],
-    # }
+    # (1) present expected file name and whether it already exists in the Downloads folder, before downloading the report
+    to_date = f" to {d_to.strftime('%d%b%Y')}" if d_to != d_from else ""
+
+    new_file_name = (
+        f"{rpt_type.upper()} {name}({len(funds.split(','))}) "
+        f"{d_from.strftime('%d%b%Y')}{to_date}"
+    )
 
     # (2) load libraries
+    print("(2) loading libraries")
     import time
 
     start_time_osprey = time.time()
 
-    from datetime import datetime, timedelta
+    # from datetime import datetime  # , timedelta
     from utilities import timediff, latest_file
-    import os
-    from pathlib import Path
+    import os, re
     import pandas as pd
-    from constants import pthPy, pth_dl, eagle_default, report_types_dict
+    from constants import pth_dl, eagle_default, report_types_dict
+
+    file_exists = (pth_dl / f"{new_file_name}.{sfx}").exists()
+    print(
+        f"Expected file name based on input values:\n"
+        f"   {new_file_name}.{sfx}\n"
+        f"which {'already exists' if file_exists else 'does not yet exist'} "
+        f"in the Downloads folder.\n"
+    )
 
     # access environment variables
-    from dotenv import load_dotenv  # to access environment variables from .env file
+    from dotenv import load_dotenv
+    # to access environment variables from .env file
 
     load_dotenv()  # take environment variables from .env file
 
     # selenium suite of tools
     from selenium.webdriver.common.by import By
     from selenium.webdriver.common.keys import Keys
-    from selenium.webdriver.support.select import Select
+
+    # from selenium.webdriver.support.select import Select
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.common.exceptions import NoSuchElementException
@@ -321,14 +365,13 @@ def osprey(rpt_type, funds, d_from, d_to, name, sfx):
         NoAlertPresentException,
     )  # to handle the eagleportal.prescient.co.za alerts
     from selenium.common.exceptions import TimeoutException
-    # https://stackoverflow.com/questions/38022658/selenium-python-handling-no-such-element-exception
-    # https://www.selenium.dev/selenium/docs/api/py/common/selenium.common.exceptions.html
 
-    # use environment variables
-    # df = pd.read_excel(pthPy, sheet_name="creds", usecols="A", header=None).dropna()
-    # al = df.iloc[0, 0]
-    # xe = df.iloc[1, 0]
+    # print(funds)
 
+    print(
+        "(2a) Checking if rpt_type is 'fnav', \
+in which case, replacing '_C' in fund name"
+    )
     # (2a) for fnav rpt_type, first remove "_C" from the list of funds else the FNAV report will return "No data returned for the input criteria."
     if rpt_type == "fnav":
         sfx = "csv"
@@ -340,195 +383,305 @@ def osprey(rpt_type, funds, d_from, d_to, name, sfx):
         )
         funds = ",".join(lkup["funds_post"].astype(str))
 
-    # (3) set the path to the web driver, urls, and to the report parameters
-    import os
-
-    # os.environ["PATH"] = selenium_drivers  # + os.pathsep + os.getenv("PATH")
+    print("(3) setting report suffix for .xls vs .csv")
+    # (3) set the report suffix
     t = "0" if sfx == "csv" else "4"  # report format: DXI4[0] for .xls[.csv]
 
-    # (4) assign the browser driver
-    from selenium import webdriver
+    max_retries = 5
+    batch_succeeded = False
+    for attempt in range(1, max_retries + 1):
+        print(f"(4) Importing the webdriver (attempt {attempt}/{max_retries})")
+        # (4) assign the browser driver
+        from selenium import webdriver
 
-    driver = webdriver.Firefox()
+        driver = webdriver.Firefox()
 
-    # (5) open the browser on the default web page
-    # eagle_default = r"https://eagleportal.prescient.co.za/Default.aspx"
-    driver.get(eagle_default)  # default page
-    wait = WebDriverWait(
-        driver, 10
-    )  # https://selenium-python.readthedocs.io/waits.html, max wait for elements to appear
+        print("(5) Starting the web driver and opening the browser ...")
+        # (5) open the browser on the default web page
+        # eagle_default = r"https://eagleportal.prescient.co.za/Default.aspx"
+        driver.get(eagle_default)  # default page
+        wait = WebDriverWait(driver, 10)
+        # https://selenium-python.readthedocs.io/waits.html,
+        # max wait for elements to appear
 
-    # (6) log in
-    driver.find_element(
-        By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_UserName"
-    ).send_keys(os.getenv("EAGLE_UN"))
-    driver.find_element(
-        By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_Password"
-    ).send_keys(os.getenv("EAGLE_PW"))
-    driver.find_element(
-        By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_LoginButton"
-    ).click()
-
-    # (7) having logged in, open the selected report page
-    report_link = report_types_dict[rpt_type][1]
-    driver.get(
-        report_link
-    )  # a hyperlink for the report page selected in the function osprey()
-
-    # (7(a)) test for the presence of an alert
-    # this solution from Gemini prompt 17 Sep 2025: "python selenium test for the presence of alert text"
-    try:
-        WebDriverWait(driver, 3).until(EC.alert_is_present())
-        alert = driver.switch_to.alert
-        alert.accept()  # Or alert.dismiss()
-    except TimeoutException:
-        # print("No alert present per TimeoutException.")
-        pass
-    except NoAlertPresentException:
-        # print("No alert present per NoAlertPresentException.")
-        pass
-
-    # (8) switch to the query page
-    driver.find_element(By.CSS_SELECTOR, "#ModifyLinkLabel").click()
-
-    # (9) update the FROM calendar
-    date_selector_fr = driver.find_element(
-        By.CSS_SELECTOR,
-        'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_From_I"]',
-    )  # FROM date element
-    driver.execute_script(
-        f'arguments[0].value = "{d_from.strftime("%#m/%#d/%Y")}";', date_selector_fr
-    )  # FROM date without leading zeroes
-    driver.find_element(
-        By.CSS_SELECTOR,
-        'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_From_I"]',
-    ).click()  # click inside FROM calendar
-    driver.find_element(
-        By.CSS_SELECTOR,
-        'td[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_From_B-1"]',
-    ).click()  # update the FROM calendar
-
-    # (10) if it exists, update the TO calendar
-    try:  # https://stackoverflow.com/questions/38022658/selenium-python-handling-no-such-element-exception
-        date_selector_to = driver.find_element(
-            By.CSS_SELECTOR,
-            'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_To_I"]',
-        )  # calendar
-        driver.execute_script(
-            f'arguments[0].value = "{d_to.strftime("%m/%d/%Y")}";', date_selector_to
-        )
+        print("(6) Browser, open sesame! ...")
+        # (6) log in
         driver.find_element(
-            By.CSS_SELECTOR,
-            'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_To_I"]',
-        ).click()  # click inside TO calendar
+            By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_UserName"
+        ).send_keys(os.getenv("EAGLE_UN"))
         driver.find_element(
-            By.CSS_SELECTOR,
-            'td[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_To_B-1"]',
-        ).click()  # update the TO calendar
-    except (
-        NoSuchElementException
-    ):  # in the event that the selected report does not have a "to" calendar
-        pass
-
-    # (11) get the web element for the FUND LIST and assign values to it
-    ct100_SelectedIds = (
-        'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_FUND0_SelectedIds"]'
-    )
-    fund_selector = driver.find_element(
-        By.CSS_SELECTOR,
-        ct100_SelectedIds,
-    )
-    driver.execute_script(f'arguments[0].value = "{funds}";', fund_selector)
-
-    # (12) click the table header where "Entity ID" resides
-    ct100_FUND0 = 'table[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_FUND0_SelectedItemsGrid_DXHeaderTable"]'
-    WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, ct100_FUND0))
-    ).click()  # fund code banner
-    time.sleep(5)  # arbitrary 5 second wait
-
-    # (13) get the web element of the 'Submit' button and then click it
-    submit_button = driver.find_element(
-        By.CSS_SELECTOR, 'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_RunBtn"]'
-    )
-    submit_button.click()
-
-    # ###################
-    # ERROR MANAGEMENT
-
-    # when a report is not available after clicking the 'Submit' button, variation 1:
-    # table id="c_InboxGrid_DXMainTable", td class="dxgv"
-    # <div>No data to display.</div>
-
-    # when a report is not available after clicking the 'Submit' button, variation 2:
-    # <span id="DataMessageText">No data returned for the input criteria.</span>
-
-    # when an unknown fund code was submitted
-    # <span id="DataMessageText">All required criteria have not been selected. Select criteria above to view data.</span>
-
-    # ###################
-
-    try:
-        # (14) Wait for and then click the export button and then the xls download button
-        # https://stackoverflow.com/questions/56085152/selenium-python-error-element-could-not-be-scrolled-into-view
-        WebDriverWait(driver, 1000).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[id="DistrBtn"]'))
+            By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_Password"
+        ).send_keys(os.getenv("EAGLE_PW"))
+        driver.find_element(
+            By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_LoginButton"
         ).click()
-        WebDriverWait(driver, 1000).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, f'td[id="ExportMnu_DXI{t}_T"]')
+
+        print("(7) having logged in, opening the selected report page ...")
+        # (7) having logged in, open the selected report page
+        report_link = report_types_dict[rpt_type][1]
+        driver.get(
+            report_link
+        )  # a hyperlink for the report page selected in the function osprey()
+
+        try:
+            print(
+                "(7a) testing for the presence of an alert and accepting it if it exists"
             )
-        ).click()
+            # (7(a)) test for the presence of an alert
+            # this solution from Gemini prompt 17 Sep 2025: "python selenium test
+            # for the presence of alert text"
+            try:
+                WebDriverWait(driver, 3).until(EC.alert_is_present())
+                alert = driver.switch_to.alert
+                alert.accept()  # Or alert.dismiss()
+            except TimeoutException:
+                # print("No alert present per TimeoutException.")
+                pass
+            except NoAlertPresentException:
+                # print("No alert present per NoAlertPresentException.")
+                pass
 
-        time.sleep(5)  # wait for 5 seconds after the data downloads
+            print("(8) switching to the query page ...")
+            # (8) switch to the query page
+            driver.find_element(By.CSS_SELECTOR, "#ModifyLinkLabel").click()
 
-        # (15) having downloaded the requested report, close the web driver
-        driver.quit()
-        # print(f'Roundtrip time for getting holdings and derivative data: {timediff(start_time_osprey, time.time())}', '\n')
+            print("(9) updating the FROM calendar ...")
+            # (9) update the FROM calendar
+            date_selector_fr = driver.find_element(
+                By.CSS_SELECTOR,
+                'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_From_I"]',
+            )  # FROM date element
+            driver.execute_script(
+                f'arguments[0].value = "{d_from.strftime("%#m/%#d/%Y")}";',
+                date_selector_fr,
+            )  # FROM date without leading zeroes
+            driver.find_element(
+                By.CSS_SELECTOR,
+                'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_From_I"]',
+            ).click()  # click inside FROM calendar
+            driver.find_element(
+                By.CSS_SELECTOR,
+                'td[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_From_B-1"]',
+            ).click()  # update the FROM calendar
 
-        # (16) find the latest downloaded file and rename it and set the input variables for the latest file
-        folder_path = str(pth_dl)
-        file_type = sfx
-        to_date = " to " + d_to.strftime("%d%b%Y") if d_to != d_from else ""
-        new_file_name = f"{rpt_type.upper()} {name}({len(funds.split(','))}) {d_from.strftime('%d%b%Y')}{to_date}"
+            print("(10) updating the TO calendar, if it exists ...")
+            # (10) if it exists, update the TO calendar
+            try:  # https://stackoverflow.com/questions/38022658/selenium-python-handling-no-such-element-exception
+                date_selector_to = driver.find_element(
+                    By.CSS_SELECTOR,
+                    'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_To_I"]',
+                )  # calendar
+                driver.execute_script(
+                    f'arguments[0].value = "{d_to.strftime("%m/%d/%Y")}";',
+                    date_selector_to,
+                )
+                driver.find_element(
+                    By.CSS_SELECTOR,
+                    'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_To_I"]',
+                ).click()  # click inside TO calendar
+                driver.find_element(
+                    By.CSS_SELECTOR,
+                    'td[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_To_B-1"]',
+                ).click()  # update the TO calendar
+            except (
+                NoSuchElementException
+            ):  # in the event that the selected report does not have a "to" calendar
+                pass
 
-        # run the file name change function
-        latest_file(
-            folder_path, file_type, new_file_name
-        )  # gets the latest file of that type in the given folder and renames it to new_file_name
+            print(
+                "(11) getting the web element for the FUND LIST and assigning values to it ..."
+            )
+            # (11) get the web element for the FUND LIST and assign values to it
+            ct100_SelectedIds = (
+                'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_FUND0_SelectedIds"]'
+            )
+            fund_selector = driver.find_element(
+                By.CSS_SELECTOR,
+                ct100_SelectedIds,
+            )
+            driver.execute_script(f'arguments[0].value = "{funds}";', fund_selector)
 
-        # (16(a)) for fnav report, convert fund codes back to include "_C" suffix
-        if rpt_type == "fnav":
-            filen = os.path.join(
-                folder_path, new_file_name + f".{sfx}"
-            )  # full path name of the nav file
-            fnav = pd.read_csv(filen)  # dataframe the fnav file
-            fnav = fnav.merge(
-                lkup, how="left", left_on="NAV Entity ID", right_on="funds_post"
-            )  # merge the fnav and lookup dataframes
-            fnav["NAV Entity ID"] = fnav[
-                "funds_ante"
-            ]  # recover the original fund names
-            fnav.drop(
-                columns=["funds_ante", "funds_post"], axis=1, inplace=True
-            )  # drop the merged lookup columns
-            fnav.to_csv(filen, index=False)  # resave the NAV file
+            print("(12) clicking 'Entity ID' to trigger the report generation ...")
+            # (12) click the table header where "Entity ID" resides
+            ct100_FUND0 = 'table[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_FUND0_SelectedItemsGrid_DXHeaderTable"]'
+            WebDriverWait(driver, 20).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, ct100_FUND0))
+            ).click()  # fund code banner
+            time.sleep(5)  # arbitrary 5 second wait
 
-        # open the file
-        # os.system(f'start EXCEL.EXE "{os.path.join(folder_path, new_file_name)}"')
-        # https://stackoverflow.com/questions/35940748/use-python-to-launch-excel-file
+            print(
+                "(12a) testing for the presence of an authentication \
+alert after clicking Submit ..."
+            )
+            # (12a) test for the presence of an authentication alert after submitting the report query
+            try:
+                WebDriverWait(driver, 10).until(EC.alert_is_present())
+                alert = driver.switch_to.alert
+                alert.send_keys(
+                    os.getenv("EAGLE_UN") + Keys.TAB + os.getenv("EAGLE_PW")
+                )
+                alert.accept()
+            except TimeoutException:
+                pass
+            except NoAlertPresentException:
+                pass
 
-        # print(f"  {timediff(start_time_osprey, time.time())} to download the {rpt_type.upper()} report","\n",)
-    except Exception as e:
-        print(e)
-        print(
-            f"\n  {rpt_type.upper()} report not completed after {timediff(start_time_osprey, time.time())}\n"
-        )
+            print(
+                "(13) getting the web element of the 'Submit' \
+button and then clicking it ..."
+            )
+            # (13) get the web element of the 'Submit' button and then click it
+            submit_button = driver.find_element(
+                By.CSS_SELECTOR,
+                'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_RunBtn"]',
+            )
+            submit_button.click()
+
+            # added by Claude Code Interpreter on 17 Sep 2025 in response to
+            # "python selenium test for the presence of alert text"
+            print(
+                "(13a) testing for the presence of an authentication \
+alert after clicking Submit ..."
+            )
+            # (13a) test for the presence of an authentication alert after submitting the report query
+            try:
+                WebDriverWait(driver, 10).until(EC.alert_is_present())
+                alert = driver.switch_to.alert
+                alert.send_keys(
+                    os.getenv("EAGLE_UN") + Keys.TAB + os.getenv("EAGLE_PW")
+                )
+                alert.accept()
+            except TimeoutException:
+                pass
+            except NoAlertPresentException:
+                pass
+
+            print("(14) waiting for and then clicking the export button ...")
+            # (14) Wait for and then click the export button and then the xls download button
+            # https://stackoverflow.com/questions/56085152/selenium-python-error-element-could-not-be-scrolled-into-view
+            start_time_14 = time.time()
+            WebDriverWait(driver, 1000).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[id="DistrBtn"]'))
+            ).click()
+
+            # timeout_14 = 1000
+            # is_clickable_14 = EC.element_to_be_clickable(
+            #     (By.CSS_SELECTOR, 'a[id="DistrBtn"]')
+            # )
+            # export_button = False
+            # while not export_button:
+            #     export_button = is_clickable_14(driver)
+            #     sys.stdout.write(
+            #         f"\r  ... waited {timediff(start_time_14, time.time())} "
+            #         "so far for the export format button to become clickable"
+            #     )
+            #     sys.stdout.flush()
+            #     if not export_button:
+            #         if time.time() - start_time_14 > timeout_14:
+            #             raise TimeoutException(
+            #                 f"export format button not clickable after {timeout_14}s"
+            #             )
+            #         time.sleep(0.5)
+            # sys.stdout.write("\n")
+            # export_button.click()
+            print(
+                f"  Waited {timediff(start_time_14, time.time())} for \
+the export format button to be clickable and then clicked it ..."
+            )
+
+            start_time_14a = time.time()
+            print(
+                "(14a) Waiting for and then clicking the export \
+format button ..."
+            )
+            # (14a) Waiting for and then clicking the export format button ...
+            WebDriverWait(driver, 1000).until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, f'td[id="ExportMnu_DXI{t}_T"]')
+                )
+            ).click()
+            print(
+                f"  Waited {timediff(start_time_14a, time.time())} for \
+the download button to be clickable and then clicked it ..."
+            )
+
+            print("(14b) waiting for the download to complete ...")
+            # (14b) waiting for the download to complete ...
+            start_time_dl = time.time()
+            t_dl = 30  # downloaded within the past t_dl seconds
+            tz = 60  # max wait time of 1 minutes for download to complete
+            # and moving on to the next batch, to avoid getting stuck
+            # on a batch if the download gets stuck for some reason
+            dl_pattern = re.compile(
+                rf"{re.escape(report_types_dict[rpt_type][0])}.*\.{sfx}$"
+            )
+            while True:
+                candidates = [
+                    f
+                    for f in pth_dl.iterdir()
+                    if dl_pattern.search(f.name)
+                    and time.time() - f.stat().st_mtime <= t_dl
+                ]  # report type, suffix and downloaded within the past 30 seconds
+                if not list(pth_dl.glob("*.part")) and candidates:
+                    break
+                if time.time() - start_time_dl > tz:
+                    print(
+                        f"  Warning: timed out waiting for download \
+after {tz} seconds"
+                    )
+                    break
+                time.sleep(1)
+            print(f"  Download completed after {timediff(start_time_dl, time.time())}")
+
+            print("(14c) renaming the downloaded file ...")
+            #   (14c) rename the downloaded file
+            folder_path = str(pth_dl)
+
+            latest_file(folder_path, sfx, new_file_name)
+
+            print(f"  Downloaded and renamed to: {new_file_name}")
+
+            if rpt_type == "fnav":
+                filen = os.path.join(folder_path, new_file_name + f".{sfx}")
+                fnav = pd.read_csv(filen)
+                fnav = fnav.merge(
+                    lkup, how="left", left_on="NAV Entity ID", right_on="funds_post"
+                )
+                fnav["NAV Entity ID"] = fnav["funds_ante"]
+                fnav.drop(columns=["funds_ante", "funds_post"], axis=1, inplace=True)
+                fnav.to_csv(filen, index=False)
+
+            print("(14d) closing the web driver ...")
+            # (14d) close the driver now that the file is fully downloaded and renamed
+            driver.quit()
+            batch_succeeded = True
+            break  # success — exit the retry loop
+
+        except Exception as e:
+            print(f"Exception in steps 7a onwards: {e}")
+            try:
+                driver.close()
+                driver.quit()
+            except Exception:
+                pass
+            if attempt < max_retries:
+                print(
+                    f"  Retrying {new_file_name}.{sfx} from step \
+4 (attempt {attempt + 1}/{max_retries}) ..."
+                )
+            else:
+                print(
+                    f"  All {max_retries} {new_file_name}.{sfx} \
+attempts failed for attempt {max_retries}."
+                )
+
+    print(f"\nDownloaded {new_file_name}.{sfx}")
+    return new_file_name
 
 
 # calendar functions for prior month end and for most recent working day
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import calendar  # https://stackoverflow.com/questions/42950/get-the-last-day-of-the-month
 import holidays  #!pip install holidays
 
@@ -657,7 +810,6 @@ def tmv(
     Returns:
         dataframe with percentage columns converted on a per fund level
     """
-
     import pandas as pd
 
     # # TEST for presence of inputs
@@ -747,12 +899,95 @@ def rem_zeroes(
     # removed from {len_before} inital rows')
 
 
-import time
-import os
-import shutil
-import datetime
-from tqdm import tqdm
-from utilities import timediff
+# get the reporting date and list of funds to process from the py_reports.xlsm file
+
+########## TEST
+# col_ref = "derv_portfolio"  # column reference in py_reports.xlsm to get the report date and funds to process
+########## TEST
+
+
+def rpt_parms(col_ref="dervs", sht_name="qin"):
+    import pandas as pd
+    from datetime import datetime
+    from constants import pthPy
+    from utilities import prior_working_day
+
+    try:
+        # find the position of the column with the py script name
+        col_heads = pd.read_excel(pthPy, sheet_name=sht_name, header=0, nrows=0)
+        py_name = col_heads.columns.get_loc(col_ref)
+        # print(f"Position of column '{col_ref}': {py_name}")
+    except:
+        return print(f"\n\n'{col_ref}' column not found in sheet '{sht_name}'\n\n")
+    else:
+        # find the 'fx' column
+        fx = col_heads.columns.get_loc("fx")
+        # print(f"Position of column 'fx': {fx}")
+
+        # get report funds and dates
+        df = pd.read_excel(
+            pthPy,
+            sheet_name=sht_name,
+            usecols=[0, py_name, fx + 2, fx + 4],
+            header=None,
+        )
+        df = df.dropna(subset=[df.columns[0]])
+        # print(df)
+
+        # get report date
+        # k= pd.read_excel(pthPy, sheet_name="qin", usecols=[fx+2], header=None, nrows = 1).iloc[0]
+        k = df.iloc[0, 2]
+        rptDate = (
+            k.date()
+            if isinstance(k, datetime)
+            else prior_working_day(datetime.today()).date()
+        )  # prior working day or report date override; has type datetime()
+        # print(rptDate)
+
+        # if generic search, get the 'to' date from sheet 'qin'
+        if col_ref == "eagle_gen":
+            k2 = df.iloc[0, 3]
+            date_to = (
+                k2.date()
+                if isinstance(k2, datetime)
+                else prior_working_day(datetime.today()).date()
+            )  # prior working day or report date override; has type datetime()
+            # print(date_to)
+
+        # delete two date columns and the 'Count --->' row
+        df = df[[0, py_name]]
+        df = df.drop(df.index[[0, 1]]).reset_index(drop=True)
+
+        # print(df)
+
+        # funds
+        funds = df[df.iloc[:, -1] == 1].iloc[:, 0].reset_index(drop=True).tolist()
+
+        return funds, rptDate
+
+
+########## TEST the ouput of this function
+# if __name__ == "__main__":
+#     g, h = rpt_parms("derv_portfolio")
+#     print(
+#         "\n",
+#         g,
+#         "\n",
+#         type(g),
+#         "\n",
+#         h,
+#         "\n",
+#         type(h),
+#         "\n",
+#     )
+########## TEST the ouput of this function
+
+# import time
+# import os
+# import shutil
+# import datetime
+# from tqdm import tqdm
+# from utilities import timediff
 
 
 def move_files_by_modified_date(source_directory, destination_directory, target_date):
@@ -800,15 +1035,7 @@ def batch_list(items, batch_size=10):  # source ChatGPT
     return [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
 
 
-# # Example usage:
-# my_list = list(range(1, 7))  # sample list
-# batches = batch_list(my_list)
-
-# for b in batches:
-#     print(b)
-
-
-def r_classifier(report_type, url_input, report_date=datetime.datetime.today()):
+def r_classifier(report_type, url_input, report_date=datetime.today()):
     """
     receives a link to a sheet in excel format then
     runs issuers_1.ipynb using the given inputs
@@ -818,37 +1045,27 @@ def r_classifier(report_type, url_input, report_date=datetime.datetime.today()):
 
     start_time_classifier = time.time()
 
-    import datetime as datetime
     import subprocess
+    import xlwings as xw
     from constants import pthPy, issuers_1
+    from utilities import timediff
 
     rptDate = report_date
     rptType = "CS1 format only" if report_type == "cs1" else "Reg 28 and Reg 30 only"
     url = url_input.replace('"', "")
 
-    # update issuers_1 input sheet
-    import xlwings as xw
-
-    # # updating "classifier" sheet
-    # xw.Book(pthPy).sheets("classifier").range("M1").value = rptType
-    # xw.Book(pthPy).sheets("classifier").range("L2").value = url
-    # xw.Book(pthPy).save()
-    # xw.Book(pthPy).close()
-
     # updating "arc" sheet
+    # xw.Book(pthPy).sheets("classifier").range("M1").value = rptType
     xw.Book(pthPy).sheets("arc").range("V4").value = rptType
+    # xw.Book(pthPy).sheets("classifier").range("L2").value = url
     xw.Book(pthPy).sheets("arc").range("V8").value = url
     xw.Book(pthPy).save()
     xw.Book(pthPy).close()
 
     # run issuers_1.ipynb
-    subprocess.run(["python", issuers_1])
+    subprocess.run([sys.executable, issuers_1])
 
     return print(
         f"{timediff(start_time_classifier, time.time())} \
             executing issuers_1.ipynb"
     )
-
-
-# convert .ipynb to .py         - https://stackoverflow.com/questions/17077494/how-do-i-convert-a-ipython-notebook-into-a-python-file-via-commandline
-# constants from other notebook - https://stackoverflow.com/questions/6343330/importing-a-long-list-of-constants-to-a-python-file

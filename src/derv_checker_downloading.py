@@ -7,42 +7,31 @@
 #
 # https://pythonexamples.org/python-selenium-wait-until-element-is-visible/
 
-print("\n\n#########################################")
-print("# START 1/4 derv_checker_downloading.py #")
-print("#########################################\n\n")
+print("\n\n###############################################")
+print("#                                             #")
+print("#   START 1/4 derv_checker_downloading.py X   #")
+print("#                                             #")
+print("###############################################\n\n")
 
 import time
 
 start_time = time.time()
 start_time_derivative_downloading = time.time()
-print("Importing libraries ...")
+print("\n\nImporting libraries ...\n")
 
 # load libraries
 import pandas as pd
-from datetime import datetime
-import numpy as np
-import os
-from pathlib import Path
-from constants import pthPy, pthEXPORTS, pth_dl, pthLOCAL
-from utilities import timediff, osprey, prior_working_day
+import os, sys, subprocess
+from send2trash import send2trash
+from constants import pthEXPORTS, pth_dl, pthTest, pthOverdrafts
+from utilities import timediff, osprey, parn_de
 
-fund_load = 200  # max number of funds to load in one go from osprey;
-# if more than this, the list of funds is split into two halves
-# and loaded in two separate calls to osprey() with the
-# "half1" and "half2" options, and then the two halves #
-# are combined into one dataframe and saved as a csv file in the Downloads folder
+fund_load = 200  # else 2 separate "half1" and "half2" osprey() calls
+cact_sets = 6  # number of batches of CACT download files
 
 # get report date and selected summary sheet option
-df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
-    subset=[0]
-)
-k = df.iloc[2, 1]
-rptDate = (
-    k if isinstance(k, datetime) else prior_working_day(datetime.today())
-)  # prior working day or report date override; has type datetime()
-summ_yn = df.iloc[3, 1]
-full = df[0].iloc[1:]
-funds = (",").join(full.tolist())
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
+
 
 print(f"{timediff(start_time, time.time())} importing libraries\n")
 
@@ -53,37 +42,21 @@ print("Deriving file names ...")
 filename = os.path.join(pthEXPORTS, f"Derv {rptDate.strftime('%d%b%Y')}.xlsx")
 fPARN = os.path.join(
     pth_dl,
-    f"PARN ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
+    f"PARN ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
 )
 fDE = os.path.join(
     pth_dl,
-    f"DERV ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
+    f"DERV ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
 )
 
-
-hlf = int(len(full) / 2)
-half1 = (",").join(full[:hlf])
-half1_name = f"PARN half1({len(full[:hlf])}) {rptDate.strftime('%d%b%Y')}.csv"
-half2 = (",").join(full[hlf:])
-half2_name = f"PARN half2({len(full[hlf:])}) {rptDate.strftime('%d%b%Y')}.csv"
-full_name = f"PARN ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv"
-derv_name = f"DERV ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv"
+full_name = f"PARN ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv"
+derv_name = f"DERV ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv"
+bank_file_sa = pthOverdrafts + rf"\{rptDate.strftime('%Y%m%d')}_overdrafts_sa.xlsx"
 
 print(
-    "\n",
-    f" {rptDate.strftime('%A %d %b %Y')} for {len(full)} funds:",
-    "\n",
-    f" {funds}",
-    "\n",
+    f"\n {rptDate.strftime('%A %d %b %Y')} \
+for {len(funds)} funds:\n {(',').join(funds)}\n",
 )
-
-print(
-    f"Expected file names:\n   {derv_name}\n   {full_name}\n   {half1_name}\n   {half2_name}\n"
-)
-
-print(f"{timediff(start_time, time.time())} deriving file names", "\n")
-
-print(f" {'No' if summ_yn == 'No' else 'A'} summary sheet is required", "\n")
 
 # download derivative metrics
 start_time = time.time()
@@ -94,22 +67,29 @@ if os.path.isfile(os.path.join(pth_dl, derv_name)):
     print(f"  {derv_name} already exists")
     pass
 else:
-    osprey("derv", funds, rptDate, rptDate, "", "csv")
+    osprey("derv", (",").join(funds), rptDate, rptDate, "", "csv")
 
 print(
-    f"{timediff(start_time, time.time())} downloading and then \
+    f" {timediff(start_time, time.time())} downloading and then \
 saving derivative data\n"
 )
-
 
 # get the fund holdings in "portfolio analytics review - new" format
 start_time = time.time()
 print("Downloading and then saving holdings data ...")
 
-if len(full) > fund_load:  # if more than 100 funds are in the list ...
+if len(funds) > fund_load:  # if more than 100 funds are in the list ...
     # ... get holdings for the first half of funds in the list
     start_time_1 = time.time()
     print(f"  ... downloading first of two subsets of holdings: {half1_name}")
+
+    # derive holdings full and half downl;oad file names expected
+    hlf = int(len(funds) / 2)
+    half1 = (",").join(funds[:hlf])
+    half1_name = f"PARN half1({len(funds[:hlf])}) {rptDate.strftime('%d%b%Y')}.csv"
+    half2 = (",").join(funds[hlf:])
+    half2_name = f"PARN half2({len(funds[hlf:])}) {rptDate.strftime('%d%b%Y')}.csv"
+
     # check if the file was already downloaded before running osprey()
     # if os.path.isfile(pth_dl + r'\\' + half1_name):
     if (
@@ -121,7 +101,8 @@ if len(full) > fund_load:  # if more than 100 funds are in the list ...
     else:
         osprey("parn", half1, rptDate, rptDate, "half1", "csv")
         print(
-            f"  {timediff(start_time_1, time.time())} downloading first of two subsets of holdings"
+            f"  {timediff(start_time_1, time.time())} downloading \
+first of two subsets of holdings"
         )
 
     # ... get holdings for the second half of funds in the list
@@ -138,20 +119,20 @@ if len(full) > fund_load:  # if more than 100 funds are in the list ...
     else:
         osprey("parn", half2, rptDate, rptDate, "half2", "csv")
         print(
-            f"  {timediff(start_time_2, time.time())} downloading second of two subsets of holdings"
+            f"  {timediff(start_time_2, time.time())} downloading \
+second of two subsets of holdings"
         )
 
-    # combine dataframes of the two half sets of holdings https://pandas.pydata.org/docs/user_guide/merging.html
     df1 = pd.read_csv(os.path.join(pth_dl, half1_name))
     df2 = pd.read_csv(os.path.join(pth_dl, half2_name))
-    df3 = pd.concat([df1, df2])
-    # print(len(df1), len(df2), len(df1) + len(df2), len(df3))
+    df_parn = pd.concat([df1, df2])
+    # print(len(df1), len(df2), len(df1) + len(df2), len(df_parn))
 
     # write the combined dataframe to a csv file in the Downloads folder
-    df3.to_csv(
+    df_parn.to_csv(
         os.path.join(
             pth_dl,
-            f"PARN ({len(full[hlf:]) + len(full[:hlf])}) {rptDate.strftime('%d%b%Y')}.csv",
+            f"PARN ({len(funds[hlf:]) + len(funds[:hlf])}) {rptDate.strftime('%d%b%Y')}.csv",
         ),
         index=False,
     )
@@ -167,7 +148,7 @@ else:  # else get all the holdings in one go
         pass
     else:
         start_time_h = time.time()
-        osprey("parn", funds, rptDate, rptDate, "", "csv")
+        osprey("parn", (",").join(funds), rptDate, rptDate, "", "csv")
         print(
             f"  {timediff(start_time_h, time.time())} downloading \
 all holdings"
@@ -180,23 +161,49 @@ print(
 saving holdings data\n"
 )
 
-
-print("\n Expected downloads:")
-print(f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}")
-print(f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}")
-print(f" A summary sheet is{' not' if summ_yn == 'No' else ''} required", "\n")
 print(
-    f"{timediff(start_time, time.time())} getting the reporting date and \
-        latest downloaded holdings and derivatives files",
-    "\n",
+    f"\n {timediff(start_time_derivative_downloading, time.time())} \
+downloading holdings, derivative metrics, and cash activities \
+metrics. Next step is compiling.\n",
 )
 
+# save daily bank reconciliation files
+start_time = time.time()
+print("\n\nSaving daily bank recons from Outlook")
+bank = os.path.join(os.path.dirname(__file__), "overdrafts.py")
+subprocess.run([sys.executable, bank])
 print(
-    f"{timediff(start_time_derivative_downloading, time.time())} downloading \
-        holdings and derivative metrics. Next step is compiling.",
-    "\n",
+    f" {timediff(start_time, time.time())} \
+saving daily bank recons from Outlook\n\n"
 )
 
-print("\n\n##########################################")
-print("#  END 1/4 derv_checker_downloading.py  #")
-print("##########################################\n\n")
+# test that holdings (fPARN) downloaded
+if os.path.exists(fPARN):
+    df_fPARN = pd.read_csv(fPARN)
+    test_fPARN = (
+        os.path.exists(fPARN) and df_fPARN.columns[1] == "Valuation First Level"
+    )
+    if not test_fPARN:
+        send2trash.sendtotrash(fPARN)
+
+# test that derivatives (fDE) downloaded
+if os.path.exists(fDE):
+    df_fDE = pd.read_csv(fDE)
+    test_fDE = os.path.exists(fDE) and df_fDE.columns[6] == "Effective Exposure"
+    if not test_fDE:
+        send2trash.sendtotrash(fDE)
+
+print(f"\n Expected downloads for {rptDate.strftime('%A %d %B %Y')}:")
+print(
+    f"  {os.path.basename(fPARN)} which {'exists' if test_fPARN else 'does not exist'}"
+)
+print(f"  {os.path.basename(fDE)} which {'exists' if test_fDE else 'does not exist'}")
+print(
+    f"  {os.path.basename(bank_file_sa)} which {'exists' if os.path.exists(bank_file_sa) else 'does not exist'}"
+)
+
+print("\n\n###############################################")
+print("#                                             #")
+print("#    END 1/4 derv_checker_downloading.py X    #")
+print("#                                             #")
+print("###############################################\n\n")

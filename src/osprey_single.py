@@ -1,64 +1,32 @@
 print("\n\n(1) setting input variables for testing osprey()")
 from datetime import datetime
 import pandas as pd
+import re
 from constants import pthPy, pth_dl
 from tqdm import tqdm
 
 # (1) inputs to function osprey() for testing purposes
-
-n = 152
-batch_size = n - 1
-batch_number = 1
-row_skip = 1
-# start = 1
-
-sfx = "csv"
 rpt_type = "parn"
-d_from = datetime(2026, 5, 12)
-d_to = datetime(2026, 5, 12)
+name = f"PGF Holdings"  # "PGF_UT_prices" for utps, and "PGF_Holdings" for parn
+col_to_use = "H"
+sfx = "csv"
 
-# for batch_number in tqdm(range(start, n), desc="Processing batches"):
-# batch_size = n-1
-# batch_number = 17
-row_skip = 1 + (batch_number - 1) * batch_size  # row_skip = 1
-
+d_from = datetime(2026, 5, 28)
+d_to = datetime(2026, 5, 28)
 df = pd.read_excel(
     pthPy,
     sheet_name="arc",
-    usecols="A",
+    usecols=col_to_use,
     header=None,
-    skiprows=row_skip,
+    skiprows=1,
 ).dropna()  # nrows=batch_size,
-print(df)
+df.columns = [0]  # assigning header number to 0 for the code below to work, e.g., df[0]
+
+# print(df)
 funds = ",".join(df[0].astype(str).tolist())
-print(funds)
+nf = len(funds.split(","))
+# print(f"\n{len(funds)}\n{nf}\n{funds}")
 
-name = f""
-# print(name, len(df), df)
-
-to_date = " to " + d_to.strftime("%d%b%Y") if d_to != d_from else ""
-new_file_name = (
-    f"{rpt_type.upper()} {name}({len(funds.split(','))}) "
-    f"{d_from.strftime('%d%b%Y')}{to_date}"
-)
-
-if (pth_dl / f"{new_file_name}.{sfx}").exists():
-    print(
-        f"  Skipping batch_number {batch_number} — file already exists: {new_file_name}.{sfx}"
-    )
-    # continue
-
-print(f"{len(df)} \n {to_date}\n{name}\n {new_file_name}\n {funds}")
-
-print(
-    f"Expected file name: {rpt_type.upper()} "
-    f"{name}({len(funds.split(','))}) "
-    f"{d_from.strftime('%d%b%Y')}"
-    f"{' to ' + d_to.strftime('%d%b%Y') if d_to != d_from else ''}"
-    f".{sfx}\n"
-)
-
-# print(type(funds), funds)
 # An Eagle report lookup function, given seven parameters
 # def osprey(rpt_type = 'r28i', funds = 'PABS, SMMAIF' as string, d_from as datetime, d_to as datetime, name, sfx = 'csv' as string,
 """
@@ -79,13 +47,19 @@ Returns:
     A downloaded report in the local Downloads folder renamed to identify it
 """
 
+# present expected file name and whether it already exists in the Downloads folder, before downloading the report
+new_file_name = f"{rpt_type.upper()} {name}({nf}) {d_from.strftime('%d%b%Y')}{(' to ' + d_to.strftime('%d%b%Y') if d_to != d_from else '')}"
+print(
+    f"Expected file name based on input values: \n   {new_file_name}.{sfx}\nwhich {'already exists' if (pth_dl / f'{new_file_name}.{sfx}').exists() else 'does not yet exist'} in the Downloads folder.\n\n"
+)
+
 print("(2) loading libraries")
 # (2) load libraries
 import time
 
 start_time_osprey = time.time()
 
-from datetime import datetime, timedelta
+from datetime import datetime  # , timedelta
 from utilities import timediff, latest_file
 import os
 import pandas as pd
@@ -99,7 +73,8 @@ load_dotenv()  # take environment variables from .env file
 # selenium suite of tools
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.select import Select
+
+# from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
@@ -316,21 +291,33 @@ the download button to be clickable and then clicked it ..."
         print("(14b) waiting for the download to complete ...")
         # (14b) waiting for the download to complete ...
         start_time_dl = time.time()
+        t_dl = 30  # downloaded within the past t_dl seconds
+        tz = 60  # max wait time of 1 minutes for download to complete and
+        # moving on to the next batch, to avoid getting stuck
+        # on a batch if the download gets stuck for some reason
+        dl_pattern = re.compile(
+            rf"{re.escape(report_types_dict[rpt_type][0])}.*\.{sfx}$"
+        )
         while True:
-            if not list(pth_dl.glob("*.part")) and list(pth_dl.glob(f"*.{sfx}")):
+            candidates = [
+                f
+                for f in pth_dl.iterdir()
+                if dl_pattern.search(f.name) and time.time() - f.stat().st_mtime <= t_dl
+            ]  # report type, suffix and downloaded within the past 30 seconds
+            if not list(pth_dl.glob("*.part")) and candidates:
                 break
-            if time.time() - start_time_dl > 300:
-                print("  Warning: timed out waiting for download after 300 seconds")
+            if time.time() - start_time_dl > tz:
+                print(f"  Warning: timed out waiting for download after {tz} seconds")
                 break
             time.sleep(1)
         print(f"  Download completed after {timediff(start_time_dl, time.time())}")
 
         print("(14c) renaming the downloaded file ...")
-        # (14c) rename the downloaded file
+        #   (14c) rename the downloaded file
         folder_path = str(pth_dl)
 
         latest_file(folder_path, sfx, new_file_name)
-        
+
         print(f"  Renamed to: {new_file_name}")
 
         if rpt_type == "fnav":
@@ -340,7 +327,7 @@ the download button to be clickable and then clicked it ..."
                 lkup, how="left", left_on="NAV Entity ID", right_on="funds_post"
             )
             fnav["NAV Entity ID"] = fnav["funds_ante"]
-            fnav.drop(columns=["funds_ante", "funds_post"], axis=1, inplace=True)
+            fnav.drop(columns=["funds_ante", "funds_post"], inplace=True)
             fnav.to_csv(filen, index=False)
 
         print("(14d) closing the web driver ...")
@@ -362,4 +349,4 @@ the download button to be clickable and then clicked it ..."
                 f"  All {max_retries} attempts failed for batch_number {batch_number}."
             )
 
-print(f"\nCompleted outer loop.")
+print(f"\nDownloaded {new_file_name}.{sfx}")

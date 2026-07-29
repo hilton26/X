@@ -3,9 +3,11 @@
 
 # # Compile the Derivative Cover Check Sheets
 
-print("\n\n##############################################")
-print("#      START 2/4 DERV_CHECKER_COMPILING      #")
-print("##############################################\n\n")
+print("\n\n##################################################")
+print("#                                                #")
+print("#      START 2/4 derv_checker_compiling.py  X    #")
+print("#                                                #")
+print("##################################################\n\n")
 
 # Libraries, libraries!
 
@@ -16,68 +18,69 @@ start_time_derv_compiling = start_time
 print("Importing libraries and setting paths ...")
 
 import pandas as pd
-import xlrd, os, shutil
-from pathlib import Path
-from datetime import datetime, timedelta
+import os, sys, shutil, re
+from datetime import timedelta
 from tqdm import tqdm
-from constants import pthPy, pth_dl, pthSttlmnt, pthEXPORTS, pthLOCAL
-from utilities import timediff, prior_working_day
-
-# import xlwings as xw
-# import openpyxl
-# import copy  # "AttributeError: Style objects are immutable and cannot be changed. Reassign the style with a copy"
-# from openpyxl.styles import (NamedStyle, Alignment, Font)  # https://openpyxl.readthedocs.io/en/stable/styles.html
-# from openpyxl.styles.borders import Border, Side
-# from openpyxl.cell import (Cell)  # https://stackoverflow.com/questions/42215933/apply-wrap-text-to-all-cells-using-openpyxl
+from constants import pthSttlmnt, pthEXPORTS, pthLOCAL, derv_tmpl
+from utilities import timediff, parn_de
 
 print(
-    f"{timediff(start_time, time.time())} importing libraries \
-        and setting paths",
-    "\n",
+    f" {timediff(start_time, time.time())} importing libraries \
+and setting paths\n"
 )
 
 # Get report date and selected summary sheet option
-
 start_time = time.time()
 print(
     "Getting the reporting date and latest downloaded \
-        holdings and derivatives files...",
-    "\n",
+holdings and derivatives files...\n"
 )
 
-df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
-    subset=[0]
-)
-k = df.iloc[2, 1]
-rptDate = (
-    k if isinstance(k, datetime) else prior_working_day(datetime.today())
-)  # prior working day or report date override; has type datetime()
-summ_yn = df.iloc[3, 1]
-full = df[0].iloc[1:]
-funds = (",").join(full.tolist())
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
 
-# get paths to the holdings and derivative metric files
-fPARN = os.path.join(
-    pth_dl,
-    f"PARN ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
-)
-fDE = os.path.join(
-    pth_dl,
-    f"DERV ({len(full)}) {rptDate.strftime('%d%b%Y')}.csv",
-)
+# check if the required files have been downloaded, else continue
+if not os.path.exists(fPARN) or not os.path.exists(fDE):
+    sys.exit(
+        f"Stopping: missing expected download(s):\n"
+        f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}\n"
+        f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}\n"
+    )
+# df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
+#     subset=[0]
+# )
+# k = df.iloc[2, 1]
+# rptDate = (
+#     k if isinstance(k, datetime) else prior_working_day(datetime.today())
+# )  # prior working day or report date override; has type datetime()
+# summ_yn = df.iloc[3, 1]
+# funds = df[0].iloc[1:]
+
+# # get paths to the expected holdings and derivative metric files
+# fPARN = os.path.join(
+#     pth_dl,
+#     f"PARN ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
+# )
+# fDE = os.path.join(
+#     pth_dl,
+#     f"DERV ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
+# )
+
+# # check if the required files have been downloaded, else exit
+# if not os.path.exists(fPARN) or not os.path.exists(fDE):
+#     sys.exit(
+#         f"\n\nStopping: missing expected download(s):\n"
+#         f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}\n"
+#         f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}\n\n"
+#     )
 
 print(
-    f" {rptDate.strftime('%A %d %b %Y')} for {len(full)} funds:",
-    "\n",
-    f"{(', ').join(full.tolist())}",
+    f" {rptDate.strftime('%A %d %b %Y')} for {len(funds)} funds:\n",
+    f"{(', ').join(funds.tolist())}",
 )
-print("\n Expected downloads:")
-print(f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}")
-print(f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}")
 print(f" A summary sheet is{' not' if summ_yn == 'No' else ''} required", "\n")
 print(
-    f"{timediff(start_time, time.time())} getting the reporting date and latest downloaded holdings and derivatives files",
-    "\n",
+    f" {timediff(start_time, time.time())} getting the reporting \
+date and latest downloaded holdings and derivatives files\n",
 )
 
 # Dataframe the holdings and deltas csv files and convert numerical columns from str to float
@@ -91,9 +94,7 @@ wbH = pd.read_csv(fPARN)
 wbD = pd.read_csv(fDE)
 
 # get the fund names and fund codes from the holdings dataframe
-fnames = (
-    wbH["Entity Name"].unique()
-)  # list of the fund names in the holdings file, resulting type = numpy.ndarray
+fnames = wbH["Entity Name"].unique()
 fcodes = wbH["Entity ID"].unique()
 
 # convert derivative dataframe columns from str to float
@@ -152,7 +153,7 @@ for date_col in date_cols:
     wbH[date_col] = pd.to_datetime(wbH[date_col])
 
 # convert holdings numerical columns to numbers
-num_cols = [
+num_col_names = [
     "Original Nominal",
     "Clean Book Value",
     "Clean Market Value",
@@ -160,7 +161,7 @@ num_cols = [
     "Dividend Receivable",
     "Sum of Market Value Income",
     "Market Price /Yield",
-    "% of Total Market Value",
+    r"% of Total Market Value",
     "Coupon",
     "Duration",
     "Modified Duration",
@@ -175,24 +176,27 @@ num_cols = [
     "Weighted Average Coupon",
     "Weighted Modified Duration",
 ]
-for num_col in num_cols:
-    wbH[num_col] = wbH[num_col].astype(str).str.replace(",", "").astype(float)
+for num_col_name in num_col_names:
+    wbH[num_col_name] = wbH[num_col_name].astype(str).str.replace(",", "").astype(float)
 
 # convert deltas numerical columns to numbers
-num_cols_dervs = ["Nominal Holding", "Delta", "Market Value", "Effective Exposure"]
-for num_col_derv in num_cols_dervs:
-    wbD[num_col_derv] = wbD[num_col_derv].astype(str).str.replace(",", "").astype(float)
+num_col_names_dervs = ["Nominal Holding", "Delta", "Market Value", "Effective Exposure"]
+for num_col_name_derv in num_col_names_dervs:
+    wbD[num_col_name_derv] = (
+        wbD[num_col_name_derv].astype(str).str.replace(",", "").astype(float)
+    )
 
 print(
-    f"{timediff(start_time, time.time())} creating holdings and deltas dataframes", "\n"
+    f" {timediff(start_time, time.time())} creating \
+holdings and deltas dataframes",
+    "\n",
 )
 
 # Change the '% of Total Market Value" column
-
 start_time = time.time()
-print("Recalculating and saving fund Total Market Value percentages ...")
 
-# change the '% of Total Market Value" column (N) to the fund-specific % based on 'Sum of Market Value Income' column (M)
+# change the '% of Total Market Value" column (N) to the fund-
+# specific % based on 'Sum of Market Value Income' column (M)
 navs = wbH.groupby("Entity ID")[
     "Sum of Market Value Income"
 ].sum()  # (column N) this has type 'pandas.core.series.Series'
@@ -200,7 +204,11 @@ nav = navs.to_dict()  # nav series changed to dictionary to make it lookupable
 
 # recalc the '% of Total Market Value' column per fund and then ...
 newTMV = []
-for i, row in tqdm(wbH.iterrows()):
+for i, row in tqdm(
+    wbH.iterrows(),
+    desc="Recalculating Total Market Value percentages ...",
+    total=wbH.shape[0],
+):
     if nav[row["Entity ID"]] == 0:
         fndpct = 100
     else:
@@ -208,15 +216,11 @@ for i, row in tqdm(wbH.iterrows()):
     newTMV.append(fndpct)
 
 # ... replace the '% of Total Market Value' with the values in the new list
-wbH["% of Total Market Value"] = (
-    newTMV  # wbH['% of Total Market Value'].sum(), check, should equal number of funds
-)
+wbH["% of Total Market Value"] = newTMV
 
 # recalc the 'Current Exposure %' column per fund and then ...
 newCEp = []  # new Current Exposure % column
-for i, row in tqdm(
-    wbH.iterrows(), total=wbH.shape[0]
-):  # https://stackoverflow.com/questions/47087741/use-tqdm-progress-bar-with-pandas
+for i, row in tqdm(wbH.iterrows(), total=wbH.shape[0]):
     if nav[row["Entity ID"]] == 0:
         currentexposurepct = 1
     else:
@@ -224,25 +228,22 @@ for i, row in tqdm(
     newCEp.append(currentexposurepct)
 
 # ... replace the '% of Total Market Value' with the values in the new list
-wbH["Current Exposure %"] = (
-    newCEp  # wbH['% of Total Market Value'].sum(), check, should equal number of funds
-)
+wbH["Current Exposure %"] = newCEp
 
 print(
-    f"{timediff(start_time, time.time())} recalculating and saving fund Total Market Value percentages",
-    "\n",
+    f" {timediff(start_time, time.time())} recalculating \
+and saving fund Total Market Value percentages\n"
 )
 
 # Determine which derivative cover reports have already completed
 
 start_time = time.time()
 print(
-    f"Determining the derivative cover reports already completed for {rptDate.strftime('%a %d %b %Y')} ..."
+    f"Determining the derivative cover reports already \
+completed for {rptDate.strftime('%a %d %b %Y')} ..."
 )
 
 # determine which funds have completed derivative cover reports
-import re
-
 pattern = (
     r"^(?!TEST).*Derv Calc " + f"{rptDate.strftime('%d%b%Y')}" + r"\.xlsx$"
 )  # file name does not start with "TEST "
@@ -259,7 +260,7 @@ fnames_compl = [
 # names of completed derivative calculation sheets
 # replace() removes the leading '~$' which happens when a file with name is in use in Excel
 
-# get incomplete funds as the difference between the full and completed list of fund names
+# get incomplete funds as the difference between the funds and completed list of fund names
 # https://www.askpython.com/python/list/difference-between-two-lists-unique-entries#:~:
 # \text=In%20Python%2C%20to%20find%20the,unique%20entries%20from%20both%20lists.
 # incompl = (set(fnames) - set(fnames_compl)).union(set(fnames_compl) - set(fnames))
@@ -283,12 +284,10 @@ print(
     "\n",
 )
 print(
-    f"{timediff(start_time, time.time())} determining the derivative cover reports already completed for \
+    f" {timediff(start_time, time.time())} determining the derivative cover reports already completed for \
 {rptDate.strftime('%a %d %b %Y')}: {len(fcodes_compl)} completed, {len(fcodes_incompl)} remaining",
     "\n",
 )
-
-# C:\Users\hilton.netta\Documents\TestDervFiles'
 
 start_time_compiling = time.time()
 
@@ -300,30 +299,27 @@ start_time_compiling = time.time()
 
 import openpyxl
 
-print(
-    f"Compiling derivative calculation files for {len(fnames_incompl)} funds at {rptDate.strftime('%d %b %Y')}"
-)
-
-#### TEST ####
-# convert 'rptDate' from date to datetime with datetime() https://www.geeksforgeeks.org/convert-date-to-datetime-in-python/
+# create "td" to find maturities > 13 months
 td = rptDate + timedelta(days=397)
-# td = datetime(td.year, td.month, td.day)
-# td = datetime.combine(td, datetime.time(0,0,0))
-# td = datetime.combine(td, datetime(0,0,0))
-#### TEST ####
 
 # create a lookup table for fund UT status and investment team
 twoA = pd.read_excel(pthSttlmnt, sheet_name="Funds", usecols="A, D:E")
 
+#
 fnames_incompl = sorted(fnames_incompl)
-for index, fname in enumerate(tqdm(fnames_incompl), start=1):
+for index, fname in enumerate(
+    tqdm(
+        fnames_incompl,
+        desc=f"Compiling derivative calculation files for {len(fnames_incompl)} funds at {rptDate.strftime('%d %b %Y')} ...",
+    ),
+    start=1,
+):
     start_time = time.time()
 
     fcode = wbH[wbH["Entity Name"] == fname].iloc[0, 36]
     delt = wbD[wbD["Entity Name"] == fname]
     hold = wbH[wbH["Entity Name"] == fname]
-    templ = r"P:\Working Folders\Hilton\W\derv_template2.xlsx"
-    wb = openpyxl.load_workbook(templ)  # open the template
+    wb = openpyxl.load_workbook(derv_tmpl)  # open the template
     sh = wb["Summary"]  # assign the sheet to be worked on
     # sh.title = f'{fund} SchIB {date.strftime("%d%b%Y")}'  # set tab name of IB sheet
 
@@ -520,10 +516,16 @@ for index, fname in enumerate(tqdm(fnames_incompl), start=1):
 
     # leverage
     excl = ["CASH", "MONEY MARKET", "UNKNOWN", "SYTH"]
-    lvg_g = hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"
-    ].abs().sum() / nav * 100  # leverage gross
-    lvg_c = hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"
-    ].sum() / nav * 100  # leverage commitment (net)
+    lvg_g = (
+        hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"].abs().sum()
+        / nav
+        * 100
+    )  # leverage gross
+    lvg_c = (
+        hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"].sum()
+        / nav
+        * 100
+    )  # leverage commitment (net)
 
     net_eff_exp = -min(
         0, hold[hold["Investment Type"] == "SYTH"]["Current Exposure"].sum() / nav
@@ -574,9 +576,12 @@ for index, fname in enumerate(tqdm(fnames_incompl), start=1):
     sh["B7"] = cash
     sh["B8"] = mmfs
     sh["B9"] = mmis
-    sh["A9"] = (
-        f"Money market instruments{' excl CLNs and excl > 13 month bonds' if ftyp == 'UT' else ''}"
-    )
+    sh["A9"] = f"Money market instruments{
+        ' excl CLNs and excl > \
+13 month bonds'
+        if ftyp == 'UT'
+        else ''
+    }"
     sh["B10"] = bonds
     sh["B11"] = repo_gain
     sh["B12"] = marg_jse
@@ -586,9 +591,8 @@ for index, fname in enumerate(tqdm(fnames_incompl), start=1):
     sh["B20"] = min(0, trs_neg_mtm)
     sh["B21"] = repo_loss
     sh["B22"] = fras
-    sh["A24"] = (
-        f"{'A' if ailf - crry_derv + otcs > 0 else 'Ina'}dequate cash cover for currency derivatives"
-    )
+    sh["A24"] = f"{'A' if ailf - crry_derv + otcs > 0 else 'Ina'}dequate \
+cash cover for currency derivatives"
     sh["B27"] = eqty_futs
     sh["B28"] = bond_futs
     sh["B29"] = eqty_fut_frgn_mtm + bond_fut_frgn_mtm
@@ -598,11 +602,13 @@ for index, fname in enumerate(tqdm(fnames_incompl), start=1):
     sh["A36"] = (
         ""
         if ftyp == "UT"
-        else f"Cash from the {count_other_UTs + count_other_ETFs} non-MMF underlying \
+        else f"Cash from the {count_other_UTs + count_other_ETFs} \
+non-MMF underlying \
 UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
     )
 
-    # iterate through cells in the specified column C to give corresponding percebtage values
+    # iterate through cells in the specified column C to
+    # give corresponding percentage values
     for row in range(6, 39):  # from cell "C6" to cell "C38"
         # print(fcode, "B" + str(row), type("B" + str(row)),sh["B" + str(row)].value)
         if (
@@ -629,9 +635,8 @@ UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
             sh.cell(r, k).value = futs_eq_sa["i Issue Name"].iloc[k - n]
             sh.cell(r + 1, k).value = futs_eq_sa["Current Exposure %"].iloc[k - n] / 100
     sh["E14"] = sh["E13"].value + sh["E12"].value
-    sh["F14"] = (
-        f"{'A' if sh['E14'].value >= 0 else 'Ina'}dequate short SA equity futures cover [BN90 16(1)(a) & (b)]"
-    )
+    sh["F14"] = f"{'A' if sh['E14'].value >= 0 else 'Ina'}dequate short \
+    SA equity futures cover [BN90 16(1)(a) & (b)]"
 
     r = 4  # 'H5' ex-SA equity futures
     futs_eq_wo = hold[
@@ -648,9 +653,8 @@ UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
             sh.cell(r, k).value = futs_eq_wo["i Issue Name"].iloc[k - n]
             sh.cell(r + 1, k).value = futs_eq_wo["Current Exposure %"].iloc[k - n] / 100
     sh["E10"] = sh["E9"].value + sh["E8"].value
-    sh["F10"] = (
-        f"{'A' if sh['E10'].value >= 0 else 'Ina'}dequate short foreign equity futures cover [BN90 16(1)(a) & (b)]"
-    )
+    sh["F10"] = f"{'A' if sh['E10'].value >= 0 else 'Ina'}dequate \
+    short foreign equity futures cover [BN90 16(1)(a) & (b)]"
 
     r = 7  # 'H8' SA bond futures
     futs_bd_sa = hold[
@@ -666,9 +670,8 @@ UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
             sh.cell(r, k).value = futs_bd_sa["i Issue Name"].iloc[k - n]
             sh.cell(r + 1, k).value = futs_bd_sa["Current Exposure %"].iloc[k - n] / 100
     sh["E6"] = sh["E5"].value + sh["E4"].value
-    sh["F6"] = (
-        f"{'A' if sh['E6'].value >= 0 else 'Ina'}dequate short SA bond futures cover [BN90 16(1)(a) & (b)]"
-    )
+    sh["F6"] = f"{'A' if sh['E6'].value >= 0 else 'Ina'}dequate short \
+    SA bond futures cover [BN90 16(1)(a) & (b)]"
 
     r = 10  # 'H11' ex-SA bond futures
     futs_bd_wo = hold[
@@ -685,7 +688,8 @@ UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
 
     r = 13  # 'H14' currency futures
     futs_cr = hold[hold["Valuation Second Level"] == "Currency Derivatives"]
-    # futs_cr = hold[hold["Valuation Second Level"] == "Currency Derivatives"] # minus added 16Feb 2026 to align wit5h manual report calc
+    # futs_cr = hold[hold["Valuation Second Level"] == "Currency Derivatives"]
+    # # minus added 16Feb 2026 to align wit5h manual report calc
     sh.cell(r, n - 1).value = (
         "Currency futures (" + str(len(futs_cr["i Issue Name"])) + ")"
     )
@@ -756,53 +760,39 @@ UT{'s' if count_other_UTs + count_other_ETFs != 1 else ''}"
     wb.close
     # os.startfile(filename)  # open the file for review
 
-    # print(f"({index}) {timediff(start_time, time.time())}: {fcode} [{ftyp}] ({fname})") # print time per fund
-
 print(
-    f"{timediff(start_time_compiling, time.time())} compiling derivative calculation files for {len(fnames_incompl)} funds \
+    f" {timediff(start_time_compiling, time.time())} compiling \
+derivative calculation files for {len(fnames_incompl)} funds \
 at {rptDate.strftime('%d %b %Y')}"
 )
-
-# P:\Working Folders\Hilton\W\derv_template2.xlsx
-# P:\Investment Operations\GRC\Compliance\Derivative Cover\PIMBAL Derv Calc 07Feb2025 TEST.xlsx
-# C:\Users\hilton.netta\Documents\TestDervFiles\
-# P:\Investment Operations\GRC\Compliance\Daily\derv.xlsx
-
-
-# In[11]:
-
 
 # Save the fund derivative cover calc files to the Derivative Cover folder
 start_time = time.time()
 ked = os.listdir(pthLOCAL)
-print(
-    "\n",
-    f"Saving the {len(ked)} fund derivative calculation files to the Derivative Cover folder ...",
-)
 
-# create and save the derivative cover summary file in the Exports folder and then clear the temporary local folder
-# copy the locally (C:\) stored derivative calc files to a PIM network folder
-for file in tqdm(ked):
+# create and save the derivative cover summary file in the Exports folder
+# and then clear the temporary local folder copy the locally (C:\) stored
+# derivative calc files to a PIM network folder
+for file in tqdm(
+    ked,
+    desc=f"Saving the {len(ked)} fund derivative calculation \
+files to the Derivative Cover folder ...",
+):
     shutil.copy(os.path.join(pthLOCAL, file), pthEXPORTS)
 
 print(
-    "\n",
-    f"{timediff(start_time, time.time())} saving the {len(ked)} fund derivative calculation files to Derivative Cover folder",
-    "\n",
+    f"\n {timediff(start_time, time.time())} saving the {len(ked)} fund \
+derivative calculation files to Derivative Cover folder\n"
 )
 
-
-# In[ ]:
-
-
 # Delete contents of the temporary local folder
-
-print(f"Deleting contents of the temporary folder ...")
 start_time = time.time()
 
 local_folder_delete = "yes"
 if local_folder_delete == "yes":
-    for filename in tqdm(os.listdir(pthLOCAL)):
+    for filename in tqdm(
+        os.listdir(pthLOCAL), desc="Deleting contents of the temporary folder ..."
+    ):
         file_path = os.path.join(pthLOCAL, filename)
         try:
             if os.path.isfile(file_path) or os.path.islink(file_path):
@@ -813,14 +803,18 @@ if local_folder_delete == "yes":
             print(f"Couldn't delete {file_path} because {e}")
 
 print(
-    f"{timediff(start_time, time.time())} deleting contents of the temporary folder completed"
+    f" {timediff(start_time, time.time())} deleting \
+contents of the temporary folder completed"
 )
 
 print(
-    f"{timediff(start_time_derv_compiling, time.time())} total time to compile and save {len(fnames)} \
+    f"\n\n{timediff(start_time_derv_compiling, time.time())} \
+total time to compile and save {len(fnames)} \
 derivative calculation files for {rptDate.strftime('%d %b %Y')}"
 )
 
-print("\n\n##############################################")
-print("#       END 2/4 DERV_CHECKER_COMPILING       #")
-print("##############################################\n\n")
+print("\n\n#################################################")
+print("#                                               #")
+print("#       END 2/4 derv_checker_compiling.py X     #")
+print("#                                               #")
+print("#################################################\n\n")

@@ -9,12 +9,22 @@
 #
 # https://www.ibm.com/docs/en/db2-event-store/2.0.0?topic=notebooks-markdown-jupyter-cheatsheet
 
+
+print("\n\n################################################")
+print("#                                              #")
+print("#            START pdf_reader.py     X         #")
+print("#                                              #")
+print("################################################\n\n")
+
+# installs
+# !pip install  pypdf
+# !pip install python-docx
+
 # libraries, libraries!
 import time
 
-# !pip install  pypdf
-# !pip install python-docx
-from datetime import datetime
+start_time = time.time()
+
 from pypdf import PdfReader
 from docx import Document  # https://python-docx.readthedocs.io/en/latest/
 from tqdm import tqdm
@@ -23,14 +33,10 @@ import pandas as pd
 from utilities import timediff
 from constants import pthPy, pthTest
 
-# set path to the pdf to be parsed
-start_time = time.time()
-
-print("Saving the pdf text to Word ...", "\n")
+print(f"Saving the pdf text to Word ...\n")
 
 # get the pdf file path and name
-df = pd.read_excel(pthPy, sheet_name="arc", usecols="AQ", nrows=1)
-df
+df = pd.read_excel(pthPy, sheet_name="qin", usecols="P", header=0, nrows=2)
 path_pdf = df.iloc[0, 0]
 print(path_pdf)
 
@@ -64,3 +70,10 @@ doc.save(
 
 print(f"{timediff(start_time, time.time())} saving the pdf text to Word")
 print(path_pdf[0 : path_pdf.rfind("\\") + 1] + f"{doc_name}")
+
+
+print("\n\n################################################")
+print("#                                              #")
+print("#             END pdf_reader.py     X          #")
+print("#                                              #")
+print("################################################\n\n")

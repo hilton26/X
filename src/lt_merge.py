@@ -1,6 +1,8 @@
-print("\n\n##########################")
-print("#   START lt_merge.py    #")
-print("##########################\n\n")
+print("\n\n################################")
+print("#                              #")
+print("#       START lt_merge.py  X   #")
+print("#                              #")
+print("################################\n\n")
 
 # libraries, libraries!
 import time
@@ -33,7 +35,7 @@ funds = df1.iloc[:, 0].str.upper()
 df = pd.read_excel(pthPy, sheet_name="arc", usecols="S", nrows=3)
 k = df.iloc[1, 0]
 rptDate = (
-    k if isinstance(k, datetime) else prior_month_end(datetime.today().date())
+    k.date() if isinstance(k, datetime) else prior_month_end(datetime.today().date())
 )  # prior month end or report date override; type is datetime()
 num_batches = df.iloc[2, 0]
 
@@ -50,7 +52,7 @@ start_time = time.time()
 print("Dataframing the lookthrough holdings ...\n")
 
 # pattern2 = re.compile(fr"^R28I.*31Dec2025\.csv$")
-pattern2 = re.compile(rf"^R28I.*{rptDate.strftime('%d%b%Y')}\.csv$")
+pattern2 = re.compile(rf"^R28I.*_of_.*{rptDate.strftime('%d%b%Y')}\.csv$")
 folder = Path(pth_dl)
 matching_files = [
     f.name for f in folder.iterdir() if f.is_file() and pattern2.match(f.name)
@@ -231,6 +233,8 @@ download and merge lookthroughs\n",
 # call the classifier function
 r_classifier("r28", lt_fname, rptDate)
 
-print("\n\n#######################")
-print("#   END lt_merge.py   #")
-print("#######################\n\n")
+print("\n\n################################")
+print("#                              #")
+print("#       END lt_merge.py  X     #")
+print("#                              #")
+print("################################\n\n")

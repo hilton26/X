@@ -34,12 +34,14 @@ from constants import (
     pth_BX,
     jse_data,
     credit_meta,
+    pth_m_reports,
+    pth_EC,
+    pth_PPSBAL,
 )
 from utilities import (
     timediff,
     last_working_day,
     prior_month_end,
-    prior_working_day,
     latest_file_in_folder,
     property,
 )
@@ -59,17 +61,57 @@ def msci(txt):
     return "---xxx---"
 
 
+# (1) create latest month reporting folders
+
+# take reporting date as last working day of prior month end from today's date
+rptDate = last_working_day(prior_month_end(datetime.today()))
+print(rptDate)
+
+# create the month end reporting folders if they don't yet exist - https://flexiple.com/python/python-make-directory
+
+start_time = time.time()
+print(f"Creating the month-end reporting folders, if they don't yet exist\n")
+
+
+# create the month-end_17 reporting folder if it doesnt yet exist
+pth = os.path.join(pth_m_reports, rptDate.strftime("%Y"), rptDate.strftime("%Y %m"))
+if not os.path.exists(pth):
+    os.makedirs(pth)
+
+# create the month reporting folder for ECICBALC
+fldr_ECICBALC = os.path.join(pth_EC, f"{rptDate.strftime('%Y%m')}")
+if not os.path.exists(fldr_ECICBALC):
+    os.makedirs(fldr_ECICBALC)
+
+# create the month-end reporting folder for PPSBAL:
+fldr_PPSBAL = os.path.join(pth_PPSBAL, f"{rptDate.strftime('%Y%m')}")
+if not os.path.exists(fldr_PPSBAL):
+    os.makedirs(fldr_PPSBAL)
+
+print(
+    f" {timediff(start_time, time.time())} creating the month-end \
+reporting folders, if they didn't yet exist\n"
+)
+
+# (2) get MSCI data
+
 # construct name of latest zipped archive in the folder
 start_time = time.time()
-print("Getting zipped MSCI data", "\n")
+print(f"Getting zipped MSCI data\n")
 
 m = os.listdir(msci_zips)  # list of files in the Zips directory
 # k = max([x[-8:-4] + x[-12:-10] + x[-10:-8] for x in m if x.endswith('.zip')]) # sub-list of files ending in ".zip"
 # zip_file     = f'PPS_MSCI_indexes_{k[4:6] + k[-2:] + k[0:4]}.zip'
 # TUE 4 NOV 2025: AMEND TO LOOK FOR \d{8}.zip
 k = max(
-    [x[-12:-4] for x in m if x.endswith(".zip")]
-)  # sub-list of files ending in ".zip"
+    [
+        x[-12:-4]
+        for x in m
+        if x.endswith(".zip") and os.path.getsize(os.path.join(msci_zips, x)) > 5 * 1024
+    ]
+)  # latest date suffix among ".zip" files larger than 5kB
+
+# sub-list of files ending in ".zip"
 # zip_file     = f'PPS_MSCI_indexes_{k}.zip' # latest zip file in the folder
 zip_file = f"PPS_MSCI_indexes_{k}.zip"  # latest zip file in the folder
 zipped_file = os.path.join(msci_zips, zip_file)
@@ -124,10 +166,12 @@ df.drop(1, inplace=True)
 # reset the index
 df.reset_index(level=None, drop=True, inplace=True)
 
-# make a unique, separate copy, df_MSCI, of the just unzipped df so that modifications to the copy will not affect the original df
+# make a unique, separate copy, df_MSCI, of the just 
+# unzipped df so that modifications to the copy will not affect the original df
 df_MSCI = df.copy(
     deep=True
-)  # deep=True is the default and can be omitted, changes to the copy do not affect the original
+)  # deep=True is the default and can be omitted, changes to the 
+# copy do not affect the original
 
 # rename the last column which contains "\r\n"
 df_MSCI.rename(columns={"price currency\r\n": "price currency"}, inplace=True)
@@ -163,12 +207,8 @@ df_MSCI = df_MSCI[msci_heads]
 # get the unique sets of indices
 series = df_MSCI["series long name"].unique()
 
-
 # derive reporting date from date of MSCI index data upload
 # rptDate = last_working_day(date_MSCI)
-
-# take reporting date as last working day of prior month end from today's date
-rptDate = last_working_day(prior_month_end(datetime.today()))
 
 zar = df_MSCI.drop_duplicates(subset=["Statpro ISIN"])
 
@@ -176,16 +216,21 @@ zar = df_MSCI.drop_duplicates(subset=["Statpro ISIN"])
 df_MSCI.iloc[:, 9] = df_MSCI.iloc[:, 2].apply(msci)
 
 print(
-    f" {len(series)} indices for {date_MSCI.strftime('%a %d %b %Y')} over {len(df_MSCI)} rows:\n {(', ').join(series)}"
+    f" {len(series)} indices for {date_MSCI.strftime('%a %d %b %Y')} \
+over {len(df_MSCI)} rows:\n {(', ').join(series)}"
 )
 print(f" all of which are covered by the dictionary \n")
 print(
-    f" {len(df_MSCI.iloc[:, 3].unique())} unique ISINs among the {len(series)} sets of MSCI indices \
+    f" {len(df_MSCI.iloc[:, 3].unique())} unique ISINs \
+among the {len(series)} sets of MSCI indices \
 including {len(zar[zar['price currency'] == 'ZAR'])} JSE tickers \n"
 )
 print(
-    f"{timediff(start_time, time.time())} to get zipped MSCI data for {date_MSCI.strftime('%a %d %b %Y')}"
+    f"{timediff(start_time, time.time())} to get zipped MSCI \
+data for {date_MSCI.strftime('%a %d %b %Y')}"
 )
+
+# (3) Get JSE data and combine with MSCI data and prior month-end BX data, then save as a file
 
 # define MSCI and JSE index heading names
 bx_heads = [
@@ -275,6 +320,11 @@ print(f"{timediff(start_time, time.time())} dataframing the unique MSCI constitu
 start_time = time.time()
 print("Populating the empty MSCI dataframe columns")
 
+# convert float64 columns to string, else the .loc assignment below will fail
+cols_to_str = ["Bloomberg Ticker", "GICS Code", "Status", "Exchange"]
+for col in cols_to_str:
+    df_MSCI[col] = df_MSCI[col].astype(str)
+
 # populate the MSCI columns
 df_MSCI["PIM Ticker"] = df_MSCI["ISIN"]
 df_MSCI["Bloomberg Ticker"] = df_MSCI["ISIN"]
@@ -286,18 +336,17 @@ df_MSCI.loc[df_MSCI["RE"] != "P", "GICS Code"] = str("40102030")
 df_MSCI.loc[df_MSCI["Domiciled"] == "ZA", "Exchange"] = "XJSE"
 df_MSCI.loc[df_MSCI["Domiciled"] != "ZA", "Exchange"] = "XNSE"
 
-# df_MSCI.info()
-
 print(
-    f"{timediff(start_time, time.time())} populating the empty MSCI dataframe columns"
+    f"{timediff(start_time, time.time())} populating \
+the empty MSCI dataframe columns"
 )
 
 # get the JSE indices
 start_time = time.time()
 
 print(
-    f"Downloading and then dataframing the JSE index \
-constituents constituents for {rptDate.date()}"
+    f"\n\nDownloading and then dataframing the JSE index \
+constituents for {rptDate.date()}"
 )
 
 d = rptDate.strftime("%Y-%m-%d")
@@ -353,6 +402,9 @@ df_J["Date of Upload"] = pd.to_datetime(
 )  # convert date column to type datetime
 date_J = df_J["Date of Upload"].iloc[0].date()
 print(f" JSE indices date: {date_J}", "\n")
+
+# convert df_J column "GICS Code" to string, else the .loc assignment below will fail
+df_J["GICS Code"] = df_J["GICS Code"].astype(str)
 
 # populate the JSE dataframe columns
 df_J["PIM Ticker"] = df_J["PIM Ticker"] + " SJ"
@@ -427,6 +479,8 @@ MSCI, JSE, and prior BX dataframes"
 # # confirm an old ticker is still included in the current BX file
 # df_BX[df_BX["PIM Ticker"] == "SEA SJ"]
 
+# (4) Get bond data from Prime Portal, then save the indices and bond data to a file
+
 # get bond data
 start_time = time.time()
 print("Downloading and dataframing bond data from Prime Portal")
@@ -498,6 +552,8 @@ print(
     f"\n{timediff(start_time, time.time())} downloading and dataframing bond data from Prime Portal"
 )
 
+# (5) Write the indices and bond dataframes to a workbook for review, then copy as the newest 'BX.xlsx' file
+
 # write the indices and bond dataframes to a workbook
 start_time = time.time()
 print(f"Writing the new BX dataframe to a file for {rptDate.date()}")
@@ -529,6 +585,8 @@ with pd.ExcelWriter(
     )  # write the treasury bond data to a sheet
 writer.close
 
+# (6) Copy the new workbook as the newest 'BX.xlsx' file
+
 # copy as the newest 'BX.xlsx' file
 shutil.copyfile(fln_BX, os.path.join(pth_BX, "BX.xlsx"))
 
@@ -539,3 +597,5 @@ print(" ", fln_BX)
 print(
     f"\n{timediff(start_time_zip, time.time())} roundtrip time to collect index and bond data for {rptDate.strftime('%a %d %b %Y')}"
 )
+
+# (6) Create the latest month reporting folders

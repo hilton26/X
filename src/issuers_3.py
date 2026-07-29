@@ -3,6 +3,14 @@
 
 # # Step 3: Changing % Column and Splitting out Reports
 
+# Source: Eagle 'Reg 28 Report - Incl Effective Exposure' with nine columns: 0. 'Entity Name', 1. 'Investment Type', 2. 'i Issue Name', 3. 'Primary Asset ID', 4. 'CCY', 5. 'Reg28 Classification', 6. 'End Market Value', 7. 'Percentage', 8. 'Closing Exposure PA'
+
+print("\n\n#############################")
+print("#                           #")
+print("#  START issuers_3.ipynb    #")
+print("#                           #")
+print("#############################\n\n")
+
 # libraries, libraries!
 
 print("Importing libraries and setting paths for issuers_3 ...")
@@ -35,24 +43,6 @@ from utilities import timediff
 
 print(f" {timediff(start_time, time.time())} importing libraries and setting paths\n")
 
-# list the funds
-df_check = pd.read_excel(pthPy, sheet_name="arc", usecols="V", nrows=7)
-url = df_check.iloc[6, 0].replace('"', "")
-rpt = df_check.iloc[2, 0]
-if url == url:  # ... if so, use the py_reports url ...
-    py_input = pd.read_excel(url, engine="openpyxl")
-    if isinstance(list(py_input)[9], str):
-        rptDate = datetime.strptime(list(py_input)[9], "%d %b %Y")
-    else:
-        rptDate = list(py_input)[9]
-else:  # ... prompt for a valid url
-    print('Please provide a valid URL in cell "V8" of the "arc" tab')
-
-fnds = py_input["Entity Name"].unique()
-funds = pd.Series(fnds)
-s = "" if len(fnds) == 1 else "s"
-cs1 = df_check.iloc[2, 0]
-print(type(funds), funds)
 
 # (2) get report date - https://stackoverflow.com/questions/43544514/pandas-read-specific-excel-cell-value-into-a-variable
 start_time = time.time()
@@ -69,16 +59,16 @@ if url == url:  # ... if so, use the py_reports url ...
     else:
         rptDate = list(py_input)[9]
 else:  # ... prompt for a valid url
-    print('Please provide a valid URL in cell "V8" of the "arc" tab')
+    print('Please provide a valid URL in cell "L2" of the "classifier" tab')
 
 fnds = py_input["Entity Name"].unique()
 funds = pd.Series(fnds)
 s = "" if len(fnds) == 1 else "s"
-cs1 = df_check.iloc[2, 0]
+cs1 = rpt
 
 suffix = f" for {len(funds)} funds" if cs1 == "CS1 format only" else ""
 print(
-    f'   Report date is {rptDate.strftime("%d %B %Y")} and report requested is "{cs1}"{suffix}'
+    f'   Report date is {rptDate.strftime("%a %d %B %Y")} and report requested is "{cs1}"{suffix}'
 )
 print(f"   {len(funds)} fund{s}: \n     {(', ').join(list(funds))}")
 
@@ -105,7 +95,7 @@ print(
 
 # look up security issuers and classifications from merge merge the issuers_2 classified securities and input funds
 start_time = time.time()
-print("", f"Looking up security classifications ...")
+print(f"Looking up security classifications ...")
 
 # get merged (issuers_2.xlsx created in issuers_2.ipynb)
 issuers_2 = pd.read_excel(
@@ -138,6 +128,7 @@ f_codes = df[
 
 print(f" {timediff(start_time, time.time())} looking up security classifications\n")
 
+
 # confirm all funds have a settlement bank account by merging df and sttlmnt
 start_time = time.time()
 print("Confirming all funds have a settlement account, else opening fund_codes.xlsx")
@@ -152,6 +143,7 @@ print(
 print(
     f"{timediff(start_time, time.time())} confirming all funds have a settlement account, else opening fund_codes.xlsx\n"
 )
+
 
 # set up classification function for remaining securities
 start_time = time.time()
@@ -187,12 +179,12 @@ def classify2(
 
     row["Reg 28 Classification"] = (
         "1.1(c)"
-        if (row["Primary Asset ID"] == "SAFEX")
-        or ((row["margin"] == 1) and (row["CCY"] == "ZAR"))
+        if (row["Primary Asset ID"] == "SAFEX" or row["Primary Asset ID"] == "VARMARG")
+        or (row["margin"] == 1 and row["CCY"] == "ZAR")
         else "1.2(a)"
-        if ((row["Investment Type"] == "SYTH") and (row["CCY"] != "ZAR"))
+        if (row["Investment Type"] == "SYTH" and row["CCY"] != "ZAR")
         else "1.2(c)"
-        if ((row["margin"] == 1) and (row["CCY"] != "ZAR"))
+        if (row["margin"] == 1 and row["CCY"] != "ZAR")
         else "1.1(a)"
         if (
             (row["Investment Type"] == "SYTH")
@@ -221,6 +213,7 @@ def classify2(
 print(
     f" {timediff(start_time, time.time())} setting up function to classify the remaining fund-specific securities\n"
 )
+
 
 # classify the remaining fund-specific securities
 start_time = time.time()
@@ -278,27 +271,46 @@ noIssuer.to_excel(
 writer.close()
 
 print(
-    "  Issuers not assigned   :",
-    len(noIssuer),
-    "\n",
-    " Reg 28 not classified  :",
-    len(noR28),
-    "\n",
-    " Reg 30 not classified  :",
-    len(noR30),
-    "\n",
+    f"  Issuers not assigned   : {len(noIssuer)}\n \
+       Reg 28 not classified  : {len(noR28)}\n \
+       Reg 30 not classified  : {len(noR30)}\n"
 )
 
 print(
     f" {timediff(start_time, time.time())} writing the dataframe to a file for review\n"
 )
 
+
+# write month-end issuer_2 and issuers_3 to a sheet
+start_time = time.time()
+print("Writing bulk issuers_2 and issuer_3 to a sheet for review ...")
+
+# get list of month-end 17 portfolio codes
+rest = pd.read_excel(pthPy, sheet_name="arc", usecols="AF").dropna()
+me17 = rest.iloc[:, 0].tolist()
+
+# https://stackoverflow.com/questions/740287/how-to-check-if-one-of-the-following-items-is-in-a-list
+# if the month-end 17 fund codes are in the list of funds being classified, save issuers_2 and issuers_3 files with reporting date appended
+if cs1 == "Reg 28 and Reg 30 only":
+    if len([i for i in f_codes if i in me17]) == len(me17) or len(f_codes) > 100:
+        for k in tqdm(range(2, 4)):
+            shutil.copy2(
+                os.path.join(pthTest, f"issuers_{k}.xlsx"),
+                os.path.join(pthTest, f"issuers_{k}_{rptDate.strftime('%d%b%Y')}.xlsx"),
+            )
+            # copy2() to preserve timestamp
+
+print(
+    f" {timediff(start_time, time.time())} writing bulk issuers_2 and issuer_3 to a sheet for review\n"
+)
+
+
 # assign report column headings
 start_time = time.time()
 print("", "Saving the reports else opening issuers_3.xlsx for review ...")
 
 if len(noR28) + len(noR30) + len(noIssuer) > 0:
-    excel.Workbooks.Open(iss_3)
+    os.startfile(iss_3)
 else:
     R30 = df[
         [
@@ -348,7 +360,7 @@ else:
     ]
 
     if cs1 == "Reg 28 and Reg 30 only":
-        # write the Reg 28 report to an xlsx file
+        print("Writing the Reg 30 xlsx files")
         for f_code in tqdm(f_codes):
             fname = os.path.join(
                 pthTest, f"{f_code} Reg30 {rptDate.strftime('%d%b%Y')}.xlsx"
@@ -358,7 +370,7 @@ else:
                 sheet_name=f"{f_code} Reg30 {rptDate.strftime('%d%b%Y')}",
                 index=False,
             )
-        # write the Reg 30 report to an xlsx file
+        print("Writing the Reg 28 xlsx files")
         for f_code in tqdm(f_codes):
             fname = os.path.join(
                 pthTest, f"{f_code} Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"
@@ -392,15 +404,11 @@ else:
         )
 
         # # write each Reg 28 CS1 report to an xlsx file
-        # for f_code in tqdm(f_codes):
-        #     fname = os.path.join(
-        #         pthTest, f"{f_code} Reg28 CS1 {rptDate.strftime('%d%b%Y')}.xlsx"
-        #     )
-        #     R28CS1[R28CS1["Entity Name"] == f_code].to_excel(
-        #         fname,
-        #         sheet_name=f"{f_code} Reg28 CS1 {rptDate.strftime('%d%b%Y')}",
-        #         index=False,
-        #     )
+        # for f_code in notebook.tqdm(f_codes):
+        #     fname = os.path.join(pthTest, f'{f_code} Reg28 CS1 {rptDate.strftime("%d%b%Y")}.xlsx')
+        #     R28CS1[R28CS1['Entity Name'] == f_code].to_excel(fname, \
+        #                                                      sheet_name = f'{f_code} Reg28 CS1 {rptDate.strftime("%d%b%Y")}',\
+        #                                                      index = False)
 
     # open the reporting folder and the Reg_Tests folder
     os.startfile(os.path.realpath(pthReports))
@@ -424,21 +432,6 @@ xw.Book(pthPy).sheets("arc").range("V4").value = "Reg 28 and Reg 30 only"
 xw.Book(pthPy).save()
 xw.Book(pthPy).close()
 
-# get list of month-end 17 portfolio codes
-rest = pd.read_excel(pthPy, sheet_name="funds", usecols=["Month-end 17"]).dropna()
-me17 = rest["Month-end 17"].tolist()
-
-# https://stackoverflow.com/questions/740287/how-to-check-if-one-of-the-following-items-is-in-a-list
-# if the month-end 17 fund codes are in the list of funds being classified, save issuers_2 and issuers_3 files with reporting date appended
-if cs1 == "Reg 28 and Reg 30 only":
-    if len([i for i in f_codes if i in me17]) == len(me17) or len(f_codes) > 100:
-        for k in range(2, 4):
-            shutil.copy2(
-                os.path.join(pthTest, f"issuers_{k}.xlsx"),
-                os.path.join(pthTest, f"issuers_{k}_{rptDate.strftime('%d%b%Y')}.xlsx"),
-            )
-            # copy2() to preserve timestamp
-
 print(
     f' {timediff(start_time, time.time())} saving issuers_2 and issuers_3 with month-end date unless "CS1" selected\n'
 )
@@ -446,3 +439,9 @@ print(
 print(
     f" {timediff(start_time_issuers_3, time.time())} ISSUERS_3 COMPLETED\n===========================\n"
 )
+
+print("\n\n#############################")
+print("#                           #")
+print("#    END issuers_3.ipynb    #")
+print("#                           #")
+print("#############################\n\n")

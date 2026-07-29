@@ -19,7 +19,7 @@ def derv_check():
     start_time_roundtrip = time.time()
 
     # libraries, libraries!
-    import os, subprocess, time, pandas as pd
+    import os, subprocess, sys, time, pandas as pd
 
     # import pandas as pd
     from datetime import datetime
@@ -60,7 +60,7 @@ was completed {time.ctime(os.path.getmtime(frcv_file))}"
     else:
         try:
             print("\n", "Starting derv_checker_downloading.ipynb", "\n")
-            subprocess.run(["python", dc_do])
+            subprocess.run([sys.executable, dc_do])
             print(
                 "\n",
                 "derv_checker_downloading completed",
@@ -69,7 +69,7 @@ was completed {time.ctime(os.path.getmtime(frcv_file))}"
                 "\n",
             )
 
-            subprocess.run(["python", dc_co])
+            subprocess.run([sys.executable, dc_co])
             print(
                 "\n",
                 "derv_checker_compiling completed",
@@ -78,7 +78,7 @@ was completed {time.ctime(os.path.getmtime(frcv_file))}"
                 "\n",
             )
 
-            subprocess.run(["python", dc_su])
+            subprocess.run([sys.executable, dc_su])
             print(
                 "\n",
                 "derv_checker_summarising completed",
@@ -87,7 +87,7 @@ was completed {time.ctime(os.path.getmtime(frcv_file))}"
                 "\n",
             )
 
-            subprocess.run(["python", dc_fr])
+            subprocess.run([sys.executable, dc_fr])
             print("\n", "derv_checker_freecover completed", "\n")
 
             if os.path.isfile(filename):

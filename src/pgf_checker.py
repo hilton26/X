@@ -8,10 +8,10 @@ def pgf_check():
     # libraries, libraries!
     import time
     from datetime import datetime
-    import os, schedule
+    import os
     import pandas as pd
-    from pathlib import Path
     import subprocess
+    import sys
     from constants import pthPy, pthHdg, pth_dl, pg_do, pg_co
     from utilities import timediff, prior_working_day
 
@@ -36,7 +36,13 @@ def pgf_check():
         f"PARN PGF_Holdings({len(df['pgf: PAR-N'].dropna())}) {rptDate.strftime('%d%b%Y')}.csv",
     )
 
-    # print("Expected file names before pgf_downloading.ipynb:","\n",UTs_name,"\n",NAV_name)
+    print(
+        "Expected file names before pgf_downloading.ipynb:",
+        "\n",
+        UTs_name,
+        "\n",
+        NAV_name,
+    )
 
     filename = pthHdg + rf"\{rptDate.strftime('%Y%m%d')} PGF Share Class Hedges.xlsx"
     if os.path.isfile(filename):
@@ -49,10 +55,10 @@ was completed at {time.ctime(os.path.getmtime(filename))}"
     else:
         try:
             # run the hedge checker
-            subprocess.run(["python", pg_do])
+            subprocess.run([sys.executable, pg_do])
             if os.path.isfile(UTs_name) and os.path.isfile(NAV_name):
                 # FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\hilton.netta\\Downloads\\UTPS PGF_UT_prices(7) 05Mar2025.csv'
-                subprocess.run(["python", pg_co])
+                subprocess.run([sys.executable, pg_co])
 
                 if os.path.isfile(NAV_name):
                     print(f"Missing the UT prices file: {UTs_name}")

@@ -4,6 +4,7 @@
 
 import time
 import os
+import sys
 from datetime import datetime
 import shutil  # to copy issuers_2 and issuers_3
 import subprocess
@@ -12,6 +13,6 @@ from constants import issuers_1
 
 start_time_r28 = time.time()
 print("Executing issuer_1.py ...", "\n")
-subprocess.run(["python", issuers_1])
+subprocess.run([sys.executable, issuers_1])
 
 print(f"{timediff(start_time_r28, time.time())} executing issuers_1.py")

@@ -1,30 +1,27 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Compile GEMSMED weekly Reg 30 report
+# ## Compile fund weekly Reg 30 report
 
 # import time
 import time
 
 start_time = time.time()
-start_time_gemsmed_pre = start_time
+start_time_gems_pre = start_time
 
 # libraries, libraries!
 from datetime import datetime
 import pandas as pd
 import os
 from pathlib import Path
-import shutil  # for creating folders and copying files
-from tqdm import tqdm, notebook  # notebook version of tqdm
 from constants import pthPy, pth_dl, pthLOCAL
 from utilities import prior_working_day, timediff, osprey, r_classifier
 
-print("Importing libraries to get GEMSMED_C holdings ...")
+print("Importing libraries to get fund holdings ...")
 # " ...any time you see a loop somewhere in your code in you can simply wrap it in either tdqm() or notebook.tqdm() in Jupyter"
 
 print(
-    f" {timediff(start_time, time.time())} importing libraries to get GEMSMED_C holdings",
-    "\n",
+    f" {timediff(start_time, time.time())} importing libraries to get fund holdings\n",
 )
 
 # get report parameters
@@ -59,6 +56,7 @@ print(f"\nFiles expected:\n {holds_nm}\n {dervs_nm}")
 print(f"\n{timediff(start_time, time.time())} getting the report parameters", "\n")
 
 # get and save holdings and then derivative data
+print(pthPy)
 
 start_time = time.time()
 print("Extracting and saving the fund holdings and derivatives ...\n")
@@ -170,7 +168,7 @@ a[a["Investment Type"].isin(show)]
 
 # save as an excel file
 a.to_excel(
-    os.path.join(pthLOCAL, f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
+    os.path.join(pthLOCAL, f"gems Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
     sheet_name="All",
     index=False,
 )
@@ -178,11 +176,11 @@ a.to_excel(
 print(f"Saving the file completed: {timediff(start_time, time.time())}")
 print(
     "\n",
-    os.path.join(pthLOCAL, f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
+    os.path.join(pthLOCAL, f"gems Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
     "\n",
 )
 
-# update py_reports.xlsm classifier sheet with downloaded gemsmed_c file location
+# update py_reports.xlsm classifier sheet with downloaded fund file location
 
 start_time = time.time()
 print(f"Running r_classifier ...\n")
@@ -191,7 +189,7 @@ import xlwings as xw
 
 r_classifier(
     "r28",
-    os.path.join(pthLOCAL, f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
+    os.path.join(pthLOCAL, f"gems Reg28 {rptDate.strftime('%d%b%Y')}.xlsx"),
     rptDate,
 )
 
@@ -201,11 +199,11 @@ print(
         Path.home(),
         "Documents",
         "DervFiles",
-        f"GEMSMEDC Reg28 {rptDate.strftime('%d%b%Y')}.xlsx",
+        f"gems Reg28 {rptDate.strftime('%d%b%Y')}.xlsx",
     ),
     "\n",
 )
 print(
-    f"\n{timediff(start_time_gemsmed_pre, time.time())} roundtrip time to get GEMSMED_C holdings",
+    f"\n{timediff(start_time_gems_pre, time.time())} roundtrip time to get fund holdings",
     "\n",
 )

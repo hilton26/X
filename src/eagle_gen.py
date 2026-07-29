@@ -7,14 +7,18 @@
 #
 # https://pythonexamples.org/python-selenium-wait-until-element-is-visible/
 
-print("Importing libraries ...")
+print("\n\n#############################")
+print("#                               #")
+print("#     START eagle_gen.py   X    #")
+print("#                               #")
+print("#################################\n\n")
+
+print("\n\nImporting libraries ...")
 import time
-from datetime import datetime
 import os  # to open the Downloads folder when done
 import pandas as pd
-from pathlib import Path
 from utilities import timediff, osprey
-from constants import pthPy, report_types_dict
+from constants import pth_dl, pthPy, report_types_dict
 
 from dotenv import load_dotenv
 
@@ -52,7 +56,8 @@ g = [
 k = (
     f"on {date_from.strftime('%A %d %B %Y')}"
     if date_from == date_to
-    else f"from {date_from.strftime('%A %d %B %Y')} to {date_to.strftime('%A %d %B %Y')}"
+    else f"from {date_from.strftime('%A %d %B %Y')} \
+to {date_to.strftime('%A %d %B %Y')}"
 )  # get the report date
 
 # check inputs
@@ -73,14 +78,21 @@ print(f" {fnds_}", "\n")
 rpt = [i for i in report_types_dict if report_types_dict[i][0] == rpt_type][
     0
 ]  # get dictionary key
-osprey(rpt, fnds_, date_from, date_to, "gen", ext)
 
-print(
-    f"{timediff(start_time, time.time())} getting {g} in {ext} format {k} for the {len(fnds_.split(','))} fund{s} -",
-    "\n",
-    f" {fnds_}",
-    "\n",
-)
-print(f"Roundtrip time: {timediff(start_time_eagle_gen, time.time())}")
+# download the requested report
+new_file_name = osprey(rpt, fnds_, date_from, date_to, "gen", ext)
+filepath = os.path.join(pth_dl, f"{new_file_name}.{ext}")
+print(filepath)
 
-os.startfile(os.path.join(Path.home(), "Downloads"))
+print(f"\n {timediff(start_time, time.time())} downloading {new_file_name}.{ext}")
+
+print(f"\n\nRoundtrip time: {timediff(start_time_eagle_gen, time.time())}")
+
+# open the recently downloaded file
+os.startfile(filepath)
+
+print("\n\n#################################")
+print("#                               #")
+print("#      END eagle_gen.py   X     #")
+print("#                               #")
+print("#################################\n\n")
