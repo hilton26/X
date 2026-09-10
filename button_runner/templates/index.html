@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Script Runner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .script-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .script-button:hover {
+            background-color: #0056b3;
+        }
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #e2e3e5;
+            color: #333;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Run Python Scripts</h1>
+
+    <div class="button-container">
+        {% for script_name in scripts %}
+        <button class="script-button" data-script="{{ script_name }}">{{ script_name.replace('_', ' ').title() }}</button>
+        {% endfor %}
+    </div>
+
+    <div id="status" class="status-message">
+        Click a button to execute a script.
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.script-button');
+            const statusDiv = document.getElementById('status');
+
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const scriptName = this.dataset.script;
+                    statusDiv.className = 'status-message';
+                    statusDiv.textContent = `Attempting to execute "${scriptName}"...`;
+
+                    fetch(`/execute_script/${scriptName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            statusDiv.className = 'status-message status-success';
+                            statusDiv.textContent = data.message;
+                        } else {
+                            statusDiv.className = 'status-message status-error';
+                            statusDiv.textContent = `Error: ${data.message}`;
+                        }
+                    })
+                    .catch(error => {
+                        statusDiv.className = 'status-message status-error';
+                        statusDiv.textContent = `Network error: ${error}`;
+                        console.error('Fetch error:', error);
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>

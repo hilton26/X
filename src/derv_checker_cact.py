@@ -6,25 +6,27 @@ print("\n\nImporting libraries ...\n")
 
 # load libraries
 import pandas as pd
-import os, sys, subprocess
+import os
+import sys
+import subprocess
 from constants import pth_dl
 from utilities import timediff, parn_de, osprey
 
 print("\nGetting the reporting date and names derivative files ...")
 
 # get report inputs
-fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
-cact_sets = 6
-
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold, batches = parn_de()
 # check if the required files have been downloaded, else continue
 if not os.path.exists(fPARN) or not os.path.exists(fDE):
     sys.exit(
         f"Stopping: missing expected download(s):\n"
-        f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}\n"
-        f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}\n"
+        f"  {fPARN} which \
+{'exists' if os.path.exists(fPARN) else 'does not exist'}\n"
+        f"  {fDE} which \
+{'exists' if os.path.exists(fDE) else 'does not exist'}\n"
     )
 
-print(type(funds), "\n", (",").join(funds))
+# print(type(funds), "\n", (",").join(funds))
 # print(funds, "\n", type(funds))
 
 # derive cash activities file path
@@ -39,12 +41,12 @@ if os.path.exists(fCACT):
     print(f"   {cact_name} already downloaded")
     pass
 else:
-    if cact_sets != 1:  # if more than 1 set of CACT files is indicated...
-        # ... split the fund list into cact_sets roughly equal-sized subsets
-        bounds = [round(i * len(funds) / cact_sets) for i in range(cact_sets + 1)]
-        cact_subsets = [funds[bounds[i] : bounds[i + 1]] for i in range(cact_sets)]
+    if batches != 1:  # if more than 1 set of CACT files is indicated...
+        # ... split the fund list into batches roughly equal-sized subsets
+        bounds = [round(i * len(funds) / batches) for i in range(batches + 1)]
+        cact_subsets = [funds[bounds[i] : bounds[i + 1]] for i in range(batches)]
         cact_names = [
-            f"CACT set{i}_of_{cact_sets}({len(subset)}) {rptDate.strftime('%d%b%Y')}.csv"
+            f"CACT set{i}_of_{batches}({len(subset)}) {rptDate.strftime('%d%b%Y')}.csv"
             for i, subset in enumerate(cact_subsets, start=1)
         ]
 
@@ -63,15 +65,13 @@ else:
                 pass
             else:
                 print(
-                    f"\n\n  Downloading subset {i} of {cact_sets} of cash \
+                    f"\n\n  Downloading subset {i} of {batches} of cash \
 activities for {len(subset)} funds:\n   {(',').join(subset)}\n"
                 )
-                osprey(
-                    "cact", cact_i, rptDate, rptDate, f"set{i}_of_{cact_sets}", "csv"
-                )
+                osprey("cact", cact_i, rptDate, rptDate, f"set{i}_of_{batches}", "csv")
                 print(
                     f"  {timediff(start_time_i, time.time())} downloading \
-subset {i} of {cact_sets} of cash activities"
+subset {i} of {batches} of cash activities"
                 )
 
         dfs = [

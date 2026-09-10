@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # # Assigning issuer names to securities in a portfolio
 
 # Source: Eagle 'Reg 28 Report - Incl Effective Exposure' with nine columns: 0. 'Entity Name', 1. 'Investment Type', 2. 'i Issue Name', 3. 'Primary Asset ID', 4. 'CCY', 5. 'Reg28 Classification', 6. 'End Market Value', 7. 'Percentage', 8. 'Closing Exposure PA'
@@ -29,7 +26,8 @@ from datetime import datetime
 import pandas as pd  # for dataframes
 
 # pd.options.mode.chained_assignment = None  # default='warn'
-# # https://stackoverflow.com/questions/20625582/how-to-deal-with-settingwithcopywarning-in-pandas
+# # https://stackoverflow.com/questions/20625582/
+# how-to-deal-with-settingwithcopywarning-in-pandas
 import numpy as np  # for np.NaN
 import re  # for regex
 from re import search  # for regex
@@ -51,11 +49,15 @@ from constants import (
     issuers_2,
     issuers_3,
 )
-from utilities import timediff
+from utilities import timediff, prior_month_end
 
-print(f" {timediff(start_time, time.time())} importing libraries for issuers_1\n")
+print(
+    f" {timediff(start_time, time.time())} \
+importing libraries for issuers_1\n"
+)
 
-# (1) read in the lookthrough holdings file, from the 'arc' sheet of py_reports.xlsm, as a dataframe
+# (1) read in the lookthrough holdings file,
+# from the 'arc' sheet of py_reports.xlsm, as a dataframe
 
 start_time = time.time()
 print("Reading in classifier input file ...")
@@ -64,16 +66,51 @@ print("Reading in classifier input file ...")
 df_check = pd.read_excel(pthPy, sheet_name="arc", usecols="V", nrows=7)
 url = df_check.iloc[6, 0].replace('"', "")
 rpt = df_check.iloc[2, 0]
+print(url, "\n", rpt)
 if url == url:  # ... if so, use the py_reports url ...
     # py_input = pd.read_excel(url, engine = 'openpyxl', usecols = 'A:J')
     # py_input = pd.read_excel(url, sheet_name = 'All', usecols = 'A:J')
-    py_input = pd.read_excel(url, usecols="A:J")
-    if isinstance(list(py_input)[9], str):
-        rptDate = datetime.strptime(list(py_input)[9], "%d %b %Y")
+
+    # try including the synthetic 10th ("J") column that lt_merge.py adds,
+    # whose header cell (J1) holds the report date; a manually-provided
+    # raw Eagle export has no such column, so the read itself can fail
+    try:
+        py_input = pd.read_excel(url, usecols="A:J")
+        j_header = list(py_input)[9]
+    except Exception:
+        py_input = None
+        j_header = None
+
+    column_j_empty = (
+        py_input is None
+        or j_header is None
+        or j_header != j_header  # NaN
+        or (isinstance(j_header, str) and j_header.strip() == "")
+        or str(j_header).lower().startswith("unnamed")
+    )
+
+    if column_j_empty:
+        # column J is null/empty (or absent) - fall back to the report
+        # date override in cell "V2" of the "arc" sheet
+        py_input = pd.read_excel(url, usecols="A:I")
+        v2 = pd.read_excel(pthPy, sheet_name="arc", usecols="V", nrows=1).iloc[0, 0]
+        rptDate = (
+            v2.date()
+            if isinstance(v2, datetime)
+            else prior_month_end(datetime.today().date())
+        )
     else:
-        rptDate = list(py_input)[9]
+        # column J is not empty - the report date is in cell J1 of the sheet at url
+        rptDate = (
+            datetime.strptime(j_header, "%d %b %Y")
+            if isinstance(j_header, str)
+            else j_header
+        )
 else:  # ... prompt for a valid url
-    print('Please provide a valid URL in cell "L2" of the "classifier" tab')
+    print(
+        'Please provide a valid URL \
+in cell "L2" of the "classifier" tab'
+    )
 
 print(f" {url if isinstance(url, str) else 'No url to look-through holdings'}\n")
 
@@ -81,7 +118,8 @@ fnds = py_input["Entity Name"].unique()
 funds = (", ").join(fnds)
 s = "" if len(fnds) == 1 else "s"
 print(
-    f"{rptDate.strftime('%a %d %b %Y')} instrument classifications for {len(fnds)} fund{s}:\n {funds}"
+    f"{rptDate.strftime('%a %d %b %Y')} instrument \
+classifications for {len(fnds)} fund{s}:\n {funds}"
 )
 
 # get BESA data
@@ -102,12 +140,16 @@ print(
 {len(py_input['Primary Asset ID'].unique()) / (len(py_input) - 1) * 100:.1f}%) of which are unique"
 )
 
-print(f"\n {timediff(start_time, time.time())} reading in classifier input file\n")
+print(
+    f"\n {timediff(start_time, time.time())} \
+reading in classifier input file\n"
+)
 
 # get input data
 start_time = time.time()
 print(
-    "Reading in input data incl regex, CLNs, med schemes, settlement, BESA, accruals, realty, and margins ..."
+    "Reading in input data incl regex, CLNs, med schemes, \
+settlement, BESA, accruals, realty, and margins ..."
 )
 
 res = list(filter(lambda x: str(besa_fdate) in x, os.listdir(pthBESA)))[0]
@@ -199,7 +241,6 @@ print(
 tab of pth_struct.xlsm into a dataframe\n'
 )
 
-
 # Determine funds with nil effective exposure
 start_time = time.time()
 print(
@@ -228,19 +269,20 @@ print(
 
 # determine securities with integer IDs (SA government securities without "R" prefixed)
 is_int_mask = py_input["Primary Asset ID"].apply(lambda x: isinstance(x, int))
-print(f'{len(py_input[is_int_mask])} SA government securities without "R" prefixed')
+print(
+    f'{len(py_input[is_int_mask])} SA government \
+securities without "R" prefixed'
+)
 
 py_input["Primary Asset ID"] = py_input["Primary Asset ID"].apply(
     lambda x: "R" + str(x) if isinstance(x, int) else x
 )
 
 print(
-    f"{timediff(start_time, time.time())} determining funds with zero effective exposure and funds with no settlement account \n"
+    f"{timediff(start_time, time.time())} \
+determining fund with zero effective exposure \
+and funds with no settlement account \n"
 )
-
-
-# In[7]:
-
 
 # create text pattern functions
 
@@ -416,7 +458,8 @@ def besa(
         return "B"
 
 
-# function to identify strings of text starting with 3 or 4 capital letters and ending with two or three digits
+# function to identify strings of text starting with
+# 3 or 4 capital letters and ending with two or three digits
 # to identify candidate BESA-listed securities
 def besa_maybe(txt):
     pattern = r"^[A-Z]{3,4}\d{2,3}$"
@@ -424,16 +467,19 @@ def besa_maybe(txt):
         return 1
 
 
-# function to identify a repo
+# function to identify a repo or a buy and sell-back
 def repo(txt):
-    pattern = "RPCO|RPMT|RPCA"
-    if re.search(pattern, str(txt).upper()):
-        return (
-            txt[0:3].upper()
-        )  # https://thispointer.com/python-how-to-get-first-n-characters-in-a-string/
+    txt_upper = str(txt).upper()
+    if "_REPO" in txt_upper:
+        return "bsb"  # Buy / Sell - back
+    elif re.search("RPCO|RPCA", txt_upper):
+        return "RPC"
+    elif re.search("RPMT", txt_upper):
+        return "RPM"
 
 
-# function to get days remaining to maturity # https://www.geeksforgeeks.org/python-datetime-strptime-function/
+# function to get days remaining to maturity
+# https://www.geeksforgeeks.org/python-datetime-strptime-function/
 def term(date_string):
     try:
         if len(date_string) == 0:
@@ -448,7 +494,8 @@ def term(date_string):
         return None
 
 
-# function to assign med scheme category based on current Circular 11 of 2024 from the CMS
+# function to assign med scheme category based on \
+# current Circular 11 of 2024 from the CMS
 def medcirc(txt):
     if (
         med_circ["Bond Code"].eq(txt).any()
@@ -486,7 +533,8 @@ def datex(txt):
         return None
 
 
-# function to derive issuer name based on search for a pattern in instrument description and instrument id
+# function to derive issuer name based on search
+# for a pattern in instrument description and instrument id
 def issuer_did(txt):
     for pattern in issrgx["descid"]:
         if re.search(pattern, str(txt).upper()):
@@ -559,7 +607,8 @@ def derivative(row):
         return "Currency Forward"
 
 
-# function to derive index name name based on search for a pattern in instrument description
+# function to derive index name name based on search
+# for a pattern in instrument description
 def dexin(txt):
     for pattern in indx["description"]:
         if re.search(pattern, str(txt).upper()):
@@ -578,28 +627,28 @@ def dexin(txt):
 
 print(f" {timediff(start_time, time.time())} setting up functions", "\n")
 
-
-# In[8]:
-
-
-# function to assign an issuer: https://towardsdatascience.com/create-new-column-based-on-other-columns-pandas-5586d87de73d
+# function to assign an issuer: https://towardsdatascience.com/
+# create-new-column-based-on-other-columns-pandas-5586d87de73d
 start_time = time.time()
 print("Setting up issuer identifier function ...")
 
 
 def classify1(row):
-    t = issuer_did(row["i Issue Name"])  # temp, so function only gets called once
-    g = issuer_did(row["Primary Asset ID"])  # temp, so function only gets called once
+    t = issuer_did(row["i Issue Name"])  # temp, so fn only gets called once
+    g = issuer_did(row["Primary Asset ID"])  # temp, so fn only gets called once
 
-    if cln(row["Primary Asset ID"]) == 1:  # if cln is included in list then ...
+    if cln(row["Primary Asset ID"]) == 1:  # if cln is included in list, ...
         return clns.loc[clns["Code"] == row["Primary Asset ID"]].iat[
             0, 1
         ]  # ... look up reference entity
 
+    elif repo(row["Primary Asset ID"]) == "bsb":  # buq sell-back, "_REPO"
+        return "FirstRand Bank Ltd"
+
     elif repo(row["Primary Asset ID"]) == "RPC":  # repo, bank legs RPCO and RPCA
         return "Absa Bank Ltd"
 
-    elif repo(row["Primary Asset ID"]) == "RPMT":  # repo, government bond leg
+    elif repo(row["Primary Asset ID"]) == "RPM":  # repo, gov bond leg
         return "Republic of South Africa"
 
     elif (row["Investment Type"] == "OP") and (
@@ -627,9 +676,6 @@ print(
 # df     = pd.DataFrame(data = dict, index = idx)
 # df
 # print(classify1(df.loc[0]))
-
-
-# In[9]:
 
 
 # (2) remove blank Market Value rows and zero-value Effective Exposure rows
@@ -667,9 +713,6 @@ after["Diff"] = after["End Market Value"] - after["Closing Exposure PA"]
 print(f"{timediff(start_time, time.time())} removing NaN and zero value rows", "\n")
 
 
-# In[10]:
-
-
 # (3) change the 'Percentage of Market Value' column
 start_time = time.time()
 print('Changing "Percentage of Market Value" column ...')
@@ -699,40 +742,33 @@ print(
 )
 
 
-# In[11]:
-
-
-# (4) save 'df_input' dataframe including ALL funds as a workbook to be used later
+# (4) save 'df_input' dataframe including ALL
+# funds as a workbook to be used later
 start_time = time.time()
 print('Saving "df_input" dataframe as a workbook called "yall" ...')
 
 with pd.ExcelWriter(yll, engine="xlsxwriter") as writer:
-    df_input.to_excel(writer, index=False, sheet_name="all")  # assigned attributes
-writer.close()
+    df_input.to_excel(writer, index=False, sheet_name="all")
+    # assigned attributes
 
 print(
-    f' {timediff(start_time, time.time())} saving "df_input" dataframe as a workbook called "yall"\n'
+    f' {timediff(start_time, time.time())} saving \
+"df_input" dataframe as a workbook called "yall"\n'
 )
-
-
-# In[12]:
-
 
 uniques = df_input.drop_duplicates(subset="Primary Asset ID", keep="first")
 print(list(uniques), uniques.shape)
-
-
-# In[13]:
-
 
 # (5) find unique instruments and identify their instrument attributes
 start_time = time.time()
 print("Isolating unique securities ...")
 
-# unique securities - https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.drop_duplicates.html
+# unique securities - https://pandas.pydata.org/docs/
+# reference/api/pandas.DataFrame.drop_duplicates.html
 uniques = df_input.drop_duplicates(subset="Primary Asset ID", keep="first")
 
-# drop fund name column - https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.drop.html
+# drop fund name column - https://pandas.pydata.org/
+# docs/reference/api/pandas.DataFrame.drop.html
 uniques.drop(["Entity Name"], axis=1, inplace=True, errors="ignore")
 
 # drop accrual and margin Investment Type rows
@@ -741,18 +777,18 @@ uniques = uniques[
     & ~uniques["Primary Asset ID"].isin(margin_list)
 ]
 
-# reset index - https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html
+# reset index - https://pandas.pydata.org/docs/
+# reference/api/pandas.DataFrame.reset_index.html
 uniques.reset_index(
     drop=True, inplace=True
 )  # drop original index, overwrite the original dataframe
 
 print(f" {len(uniques)} unique securities")
 
-print(f"   {timediff(start_time, time.time())} isolating unique securities\n")
-
-
-# In[14]:
-
+print(
+    f"   {timediff(start_time, time.time())} \
+isolating unique securities\n"
+)
 
 # (6) identify the unique instruments' attributes
 start_time = time.time()
@@ -782,16 +818,15 @@ uniques["margin"] = uniques.apply(
 )
 uniques["Derivative"] = uniques.apply(derivative, axis=1)
 uniques["Term"] = (pd.to_datetime(uniques["Date"], format="%d%b%Y") - rptDate).dt.days
-# https://stackoverflow.com/questions/26763344/convert-pandas-column-to-datetime
-# https://stackoverflow.com/questions/37840812/pandas-subtracting-two-date-columns-and-the-result-being-an-integer
+# https://stackoverflow.com/questions/26763344/
+# convert-pandas-column-to-datetime
+# https://stackoverflow.com/questions/37840812/
+# pandas-subtracting-two-date-columns-and-the-result-being-an-integer
 
 print(
-    f" {timediff(start_time, time.time())} appending instrument attributes to the unique securities\n"
+    f" {timediff(start_time, time.time())} appending \
+instrument attributes to the unique securities\n"
 )
-
-
-# In[16]:
-
 
 # (7) identify issuers
 start_time = time.time()
@@ -811,20 +846,16 @@ uniques["Issuer"] = issuers
 print(f" {timediff(start_time, time.time())} identifying issuers\n")
 
 
-# In[24]:
-
-
 # (8) identify derivative counterparties for Reg 28 CS1 of 2023
 start_time = time.time()
 print("Identifying derivative counterparties ...")
 
 uniques["Counterparty"] = uniques.apply(counterparty, axis=1)
 
-print(f" {timediff(start_time, time.time())} identifying derivative counterparties\n")
-
-
-# In[25]:
-
+print(
+    f" {timediff(start_time, time.time())} \
+identifying derivative counterparties\n"
+)
 
 # (9) identify securities with absent issuers
 start_time = time.time()
@@ -842,12 +873,9 @@ print(f" Unallocated issuers : {str(len(no_issuer.Issuer))}")
 print(f" Unallocated CLNs    : {str(len(no_CLN_issuer.CLN))}")
 
 print(
-    f" {timediff(start_time, time.time())} identifying securities with absent issuers\n"
+    f" {timediff(start_time, time.time())} \
+identifying securities with absent issuers\n"
 )
-
-
-# In[26]:
-
 
 # (10) write the dataframe to review it as a workbook
 start_time = time.time()
@@ -865,12 +893,9 @@ no_CLN_issuer.to_excel(
 iss1_xl.close()
 
 print(
-    f" {timediff(start_time, time.time())} writing the dataframe to a sheet for review\n"
+    f" {timediff(start_time, time.time())} \
+writing the dataframe to a sheet for review\n"
 )
-
-
-# In[27]:
-
 
 # (11) prettify the sheets using openpyxl
 start_time = time.time()
@@ -878,20 +903,22 @@ print("Giving the review sheet structure with openpyxl ...")
 
 # utilise openpyxl tools to add excel features to results sheet
 import openpyxl as px  # for adding sort filters to the excel sheet
-from openpyxl.cell import Cell  # to format cells
 from openpyxl.styles import (
     Alignment,
-    Color,
     PatternFill,
     Font,
-    Border,
 )  # to format cells
 
-# add filters to all columns https://stackoverflow.com/questions/51566349/openpyxl-how-to-add-filters-to-all-columns, and then
-# freeze entire header row in openpyxl https://stackoverflow.com/questions/25588918/how-to-freeze-entire-header-row-in-openpyxl
-# iterate over worksheets https://stackoverflow.com/questions/18495672/how-to-iterate-over-worksheets-in-workbook-openpyxl
-# wrap text in sheet headers https://stackoverflow.com/questions/42215933/apply-wrap-text-to-all-cells-using-openpyxl
-# fill colour cells https://stackoverflow.com/questions/30484220/fill-cells-with-colors-using-openpyxl
+# add filters to all columns https://stackoverflow.com/
+# questions/51566349/openpyxl-how-to-add-filters-to-all-columns, and then
+# freeze entire header row in openpyxl https://stackoverflow.com/
+# questions/25588918/how-to-freeze-entire-header-row-in-openpyxl
+# iterate over worksheets https://stackoverflow.com/questions/
+# 18495672/how-to-iterate-over-worksheets-in-workbook-openpyxl
+# wrap text in sheet headers https://stackoverflow.com/
+# questions/42215933/apply-wrap-text-to-all-cells-using-openpyxl
+# fill colour cells https://stackoverflow.com/questions/
+# 30484220/fill-cells-with-colors-using-openpyxl
 wb = px.load_workbook(pthTest + r"\issuers_1.xlsx")
 for sheet in wb.worksheets:
     sheet.auto_filter.ref = sheet.dimensions
@@ -904,10 +931,12 @@ for sheet in wb.worksheets:
             )
 
 # add a hyperlink to the 'pth_struct' sheet
-# https://stackoverflow.com/questions/46162147/python-openpyxl-change-font-to-bold
+# https://stackoverflow.com/questions/46162147/
+# python-openpyxl-change-font-to-bold
 # https://toricode.com/python-openpyxl-font-underline-for-excel-cells/
 # https://stackoverflow.com/questions/8440284/setting-styles-in-openpyxl
-# https://stackoverflow.com/questions/22986725/how-can-i-align-text-in-a-cell-to-the-top-with-openpyxl
+# https://stackoverflow.com/questions/22986725/
+# how-can-i-align-text-in-a-cell-to-the-top-with-openpyxl
 sht = wb[f"no issuers ({len(no_issuer)})"]
 sht["P1"].hyperlink = pth_struct
 sht["P1"].value = "pth_struct.xlsm"
@@ -918,13 +947,13 @@ wb.save(pthTest + r"\issuers_1.xlsx")  # save the file to the W folder
 wb.close()
 
 print(
-    f" {timediff(start_time, time.time())} giving the review sheet structure with openpyxl",
-    "\n",
+    f" {timediff(start_time, time.time())} giving the \
+review sheet structure with openpyxl\n",
 )
 print(
-    f"\n {timediff(start_time_issuers_1, time.time())} ISSUERS_1 COMPLETED\n===============================\n"
+    f"\n {timediff(start_time_issuers_1, time.time())} \
+ISSUERS_1 COMPLETED\n===============================\n"
 )
-
 
 print("\n\n###############################")
 print("#                             #")
@@ -932,15 +961,17 @@ print("#      END issuers_1.py       #")
 print("#                             #")
 print("###############################\n\n")
 
-
-# (12) run issuers_2, and _3.ipynb if all securities have an assigned issuer, else open issuers_1.xlsx
+# (12) run issuers_2, and _3.ipynb if all securities
+# have an assigned issuer, else open issuers_1.xlsx
 start_time = time.time()
 print(
-    "Running issuers_2, and _3.ipynb if all securities have an assigned issuer, else opening issuers_1.xlsx, ..."
+    "Running issuers_2, and _3.ipynb if all securities \
+have an assigned issuer, else opening issuers_1.xlsx, ..."
 )
 
 print(
-    f"Exceptions: \n {len(no_issuer)} unnamed issuers, and,\n {len(no_CLN_issuer)} unnamed CLN issuers"
+    f"Exceptions: \n {len(no_issuer)} unnamed issuers, \
+and,\n {len(no_CLN_issuer)} unnamed CLN issuers"
 )
 
 if (len(no_issuer.Issuer) == 0) and (len(no_CLN_issuer.CLN) == 0):
@@ -951,7 +982,8 @@ else:
     print(r"Check the issuers and CLNs in the \issuers_1.xlsx file")
 
 print(
-    f"\n{timediff(start_time_issuers_1, time.time())} running issuers_1, _2, and _3.ipynb\n"
+    f"\n{timediff(start_time_issuers_1, time.time())} \
+running issuers_1, _2, and _3.ipynb\n"
 )
 
 # os.startfile(iss_1)

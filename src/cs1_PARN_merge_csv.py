@@ -1,15 +1,13 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # # Merge the CS1 fund PARN sheets into one file to be used by cs1_reporting.ipynb
 
 # https://stackoverflow.com/questions/20908018/import-multiple-excel-files-into-python-pandas-and-concatenate-them-into-one-dat
 
-print("\n\n###################################################")
-print("#                                                 #")
-print("#         START cs1_PARN_merge_csv.py    X        #")
-print("#                                                 #")
-print("###################################################\n\n")
+print("\n\n###############################################")
+print("#                                             #")
+print("#        START cs1_PARN_merge_csv.py          #")
+print("#                                             #")
+print("###############################################\n\n")
+
 
 # libraries, libraries!
 import time
@@ -46,8 +44,8 @@ print(
 )
 print(f"\n{timediff(start_time, time.time())} collecting the report input data\n")
 
-# ... dataframe the fund holdings in PARN format by looping over
-# their files and appending to an initially empty dataframe
+
+# ... dataframe the fund holdings in PARN format by looping over their files and appending to an initially empty dataframe
 start_time = time.time()
 print(f"Merging the PARN csv files into a dataframe ...")
 
@@ -63,8 +61,12 @@ for index, batch in tqdm(enumerate(batches, start=1)):
 
 holdings = pd.DataFrame()  # initialise an empty dataframe
 for batch_filepath in batch_filepaths:
+    # print(batch_filepath)
     data = pd.read_csv(batch_filepath)
     holdings = pd.concat([holdings, data])
+
+# # check
+# len(holdings['Entity Name'].unique())
 
 # convert the holdings CS1 fund NAV columns to float64
 cols_to_sum = ["Sum of Market Value Income", "Current Exposure"]
@@ -122,17 +124,15 @@ navs["Total Net Assets"] = (
     navs["Total Net Assets"].str.replace(",", "").astype("float64")
 )
 
-print(f"\n{navs_fln}\n")
-
 print(
-    f" {timediff(start_time, time.time())} getting the {len(funds)} fund{s1} NAV{s2} as at {rptDate.strftime('%A %d %B %Y')} \
+    f" {timediff(start_time, time.time())} getting the {len(funds)} funds' NAV{'s' if len(funds) != 1 else ''} as at {rptDate.strftime('%A %d %B %Y')} \
 with osprey()"
 )
 
 # merge the CS1 fund holdings and NAVs, and compare their totals
 start_time = time.time()
 print(
-    f"\nMerging and comparing the {len(funds)} CS1 fund holdings and NAV{s2} as at {rptDate.strftime('%A %d %B %Y')} ..."
+    f"\nMerging and comparing the {len(funds)} CS1 fund holdings and NAVs as at {rptDate.strftime('%A %d %B %Y')} ..."
 )
 
 holdings_totals = holdings.groupby("Entity ID", as_index=False).sum()[
@@ -177,7 +177,7 @@ cols_6dp = ["SoMVI-CE", "1-CE/SoMVI %", "SoMVI-NAV", "1-NAV/SoMVI %"]
 for col in cols_6dp:
     sums_cf[col] = sums_cf[col].apply(lambda x: f"{x:,.6f}")
 
-# print(sums_cf)
+# sums_cf
 
 print(
     f" {timediff(start_time, time.time())} merging and comparing the {len(funds)} CS1 fund holdings and NAVs as at {rptDate.strftime('%A %d %B %Y')}"
@@ -224,11 +224,10 @@ hReg28.iloc[0, 9] = cs1_fname
 hReg28.iloc[1, 9] = "CS1"
 hReg28.reset_index(drop=True, inplace=True)
 
-# hReg28.info()
-
 print(
     f" {timediff(start_time, time.time())} converting the CS1 fund PARN holdings in readiness for Reg 28 classification\n"
 )
+
 
 # write the CS1 holdings dataframe to review it as a worksheet
 start_time = time.time()
@@ -236,12 +235,13 @@ print(f"\nWriting the CS1 fund holdings dataframe and navs dataframe to a sheet 
 
 with pd.ExcelWriter(cs1_fname, engine="xlsxwriter") as writer:
     hReg28.to_excel(writer, index=False, sheet_name="All")  # write the NAV sheet
-    holdings.to_excel(writer, index=False, sheet_name="PARN")  # write the NAV sheet
+    holdings.to_excel(
+        writer, index=False, sheet_name="PARN"
+    )  # write the unit trust prices sheet
     sums_cf.to_excel(
         writer, index=False, sheet_name="NAVs"
     )  # write the missing NAVs sheet
 
-# print(f"  {cs1_fname}")
 
 print(
     f" {timediff(start_time, time.time())} writing the CS1 fund holdings dataframe and navs dataframe to a sheet\n"
@@ -249,14 +249,15 @@ print(
 
 os.startfile(cs1_fname)
 
-print(f" {timediff(start_time_cs1_merge, time.time())} merging CS! PARN reports\n")
+print(f" {timediff(start_time_cs1_merge, time.time())} merging CS1 PARN reports\n")
+
 
 # run r_classifier function from utilities.py
 r_classifier("cs1", cs1_fname, rptDate)
 
 
-print("\n\n###################################################")
-print("#                                                 #")
-print("#          END cs1_PARN_merge_csv.py    X         #")
-print("#                                                 #")
-print("###################################################\n\n")
+print("\n\n###############################################")
+print("#                                             #")
+print("#          END cs1_PARN_merge_csv.py          #")
+print("#                                             #")
+print("###############################################\n\n")

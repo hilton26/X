@@ -36,7 +36,7 @@ print(
 holdings and derivatives files...\n"
 )
 
-fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold, batches = parn_de()
 
 # check if the required files have been downloaded, else continue
 if not os.path.exists(fPARN) or not os.path.exists(fDE):
@@ -121,7 +121,9 @@ for head in headsH:
 wbH["i Position Effective Date"] = pd.to_datetime(wbH["i Position Effective Date"])
 
 # maturity date column from type object to type datetime and 'NaT' to a long date in datetime format
-wbH["Maturity Date"] = pd.to_datetime(wbH["Maturity Date"])
+wbH["Maturity Date"] = pd.to_datetime(
+    wbH["Maturity Date"], format="mixed", dayfirst=True
+)
 
 
 # https://stackoverflow.com/questions/38509538/numpy-checking-if-a-value-is-nat
@@ -150,7 +152,7 @@ print(
 # convert date columns to datetime format
 date_cols = ["i Position Effective Date", "Maturity Date", "Next Coupon Date"]
 for date_col in date_cols:
-    wbH[date_col] = pd.to_datetime(wbH[date_col])
+    wbH[date_col] = pd.to_datetime(wbH[date_col], format="mixed", dayfirst=True)
 
 # convert holdings numerical columns to numbers
 num_col_names = [
@@ -300,7 +302,7 @@ start_time_compiling = time.time()
 import openpyxl
 
 # create "td" to find maturities > 13 months
-td = rptDate + timedelta(days=397)
+td = pd.Timestamp(rptDate) + timedelta(days=397)
 
 # create a lookup table for fund UT status and investment team
 twoA = pd.read_excel(pthSttlmnt, sheet_name="Funds", usecols="A, D:E")

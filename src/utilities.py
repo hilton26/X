@@ -257,23 +257,23 @@ def latest_file(folder_path, suffix="csv", new_file_name="newt"):
 def parn_de():
 
     import pandas as pd
+    import os
+    from datetime import datetime
     from constants import pthPy, pth_dl
     from utilities import prior_working_day
-    from datetime import datetime
-    import os
 
-    print("Getting the reporting date and names derivative files ...")
+    # print("Getting the reporting date and names derivative files ...")
 
-    df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
-        subset=[0]
-    )
-    k = df.iloc[2, 1]
+    df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E")
     rptDate = (
-        k if isinstance(k, datetime) else prior_working_day(datetime.today())
+        df.iloc[2, 1]
+        if isinstance(df.iloc[2, 1], datetime) and not pd.isna(df.iloc[2, 1])
+        else prior_working_day(datetime.today())
     )  # prior working day or report date override; has type datetime()
     summ_yn = df.iloc[3, 1]
     dervthreshold = df.iloc[4, 1] * 100
-    funds = df[0].iloc[1:]
+    batches = df.iloc[5, 1]
+    funds = df[0].dropna().iloc[1:]
 
     # derive holdings and derivatives file paths
     fPARN = os.path.join(
@@ -286,7 +286,7 @@ def parn_de():
         f"DERV ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
     )
 
-    return fPARN, fDE, funds, rptDate, summ_yn, dervthreshold
+    return (fPARN, fDE, funds, rptDate, summ_yn, dervthreshold, batches)
 
 
 # An Eagle report lookup function, given seven parameters
@@ -319,7 +319,8 @@ def osprey(rpt_type, funds, d_from, d_to, name, sfx="csv"):
         renamed to identify it
     """
 
-    # (1) present expected file name and whether it already exists in the Downloads folder, before downloading the report
+    # (1) present expected file name and whether it already
+    # exists in the Downloads folder, before downloading the report
     to_date = f" to {d_to.strftime('%d%b%Y')}" if d_to != d_from else ""
 
     new_file_name = (
@@ -341,7 +342,7 @@ def osprey(rpt_type, funds, d_from, d_to, name, sfx="csv"):
 
     file_exists = (pth_dl / f"{new_file_name}.{sfx}").exists()
     print(
-        f"Expected file name based on input values:\n"
+        f"\nExpected file name based on input values:\n"
         f"   {new_file_name}.{sfx}\n"
         f"which {'already exists' if file_exists else 'does not yet exist'} "
         f"in the Downloads folder.\n"
@@ -372,7 +373,9 @@ def osprey(rpt_type, funds, d_from, d_to, name, sfx="csv"):
         "(2a) Checking if rpt_type is 'fnav', \
 in which case, replacing '_C' in fund name"
     )
-    # (2a) for fnav rpt_type, first remove "_C" from the list of funds else the FNAV report will return "No data returned for the input criteria."
+    # (2a) for fnav rpt_type, first remove "_C" from
+    # the list of funds else the FNAV report will
+    # return "No data returned for the input criteria."
     if rpt_type == "fnav":
         sfx = "csv"
         lkup = pd.DataFrame(
@@ -394,9 +397,10 @@ in which case, replacing '_C' in fund name"
         # (4) assign the browser driver
         from selenium import webdriver
 
-        driver = webdriver.Firefox()
+        driver = webdriver.Firefox()  # driver = webdriver.Chrome()
+        driver.minimize_window()
 
-        print("(5) Starting the web driver and opening the browser ...")
+        print(r"(5) Starting the web driver and opening the browser ...")
         # (5) open the browser on the default web page
         # eagle_default = r"https://eagleportal.prescient.co.za/Default.aspx"
         driver.get(eagle_default)  # default page
@@ -404,7 +408,7 @@ in which case, replacing '_C' in fund name"
         # https://selenium-python.readthedocs.io/waits.html,
         # max wait for elements to appear
 
-        print("(6) Browser, open sesame! ...")
+        print(r"(6) Browser, open sesame! ...")
         # (6) log in
         driver.find_element(
             By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_UserName"
@@ -416,7 +420,7 @@ in which case, replacing '_C' in fund name"
             By.CSS_SELECTOR, "#LoginCtrl_MainLoginControl_LoginButton"
         ).click()
 
-        print("(7) having logged in, opening the selected report page ...")
+        print(r"(7) having logged in, opening the selected report page ...")
         # (7) having logged in, open the selected report page
         report_link = report_types_dict[rpt_type][1]
         driver.get(
@@ -425,7 +429,8 @@ in which case, replacing '_C' in fund name"
 
         try:
             print(
-                "(7a) testing for the presence of an alert and accepting it if it exists"
+                "(7a) testing for the presence of \
+an alert and accepting it if it exists"
             )
             # (7(a)) test for the presence of an alert
             # this solution from Gemini prompt 17 Sep 2025: "python selenium test
@@ -466,7 +471,7 @@ in which case, replacing '_C' in fund name"
 
             print("(10) updating the TO calendar, if it exists ...")
             # (10) if it exists, update the TO calendar
-            try:  # https://stackoverflow.com/questions/38022658/selenium-python-handling-no-such-element-exception
+            try:
                 date_selector_to = driver.find_element(
                     By.CSS_SELECTOR,
                     'input[id="ctl00_c_qc_QueryInputs_QueryInputsPopup_DATE1_DateCtrl_To_I"]',
@@ -489,7 +494,8 @@ in which case, replacing '_C' in fund name"
                 pass
 
             print(
-                "(11) getting the web element for the FUND LIST and assigning values to it ..."
+                "(11) getting the web element for the FUND LIST \
+and assigning values to it ..."
             )
             # (11) get the web element for the FUND LIST and assign values to it
             ct100_SelectedIds = (
@@ -513,7 +519,8 @@ in which case, replacing '_C' in fund name"
                 "(12a) testing for the presence of an authentication \
 alert after clicking Submit ..."
             )
-            # (12a) test for the presence of an authentication alert after submitting the report query
+            # (12a) test for the presence of an authentication
+            # alert after submitting the report query
             try:
                 WebDriverWait(driver, 10).until(EC.alert_is_present())
                 alert = driver.switch_to.alert
@@ -543,7 +550,8 @@ button and then clicking it ..."
                 "(13a) testing for the presence of an authentication \
 alert after clicking Submit ..."
             )
-            # (13a) test for the presence of an authentication alert after submitting the report query
+            # (13a) test for the presence of an authentication
+            # alert after submitting the report query
             try:
                 WebDriverWait(driver, 10).until(EC.alert_is_present())
                 alert = driver.switch_to.alert
@@ -557,33 +565,26 @@ alert after clicking Submit ..."
                 pass
 
             print("(14) waiting for and then clicking the export button ...")
-            # (14) Wait for and then click the export button and then the xls download button
-            # https://stackoverflow.com/questions/56085152/selenium-python-error-element-could-not-be-scrolled-into-view
+            # (14) Wait for and then click the export button
+            # and then the xls download button
             start_time_14 = time.time()
-            WebDriverWait(driver, 1000).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[id="DistrBtn"]'))
-            ).click()
+            try:
+                WebDriverWait(driver, 120).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[id="DistrBtn"]'))
+                ).click()
+            except Exception:
+                # (14x) the export button never appeared — check
+                # whether the report genuinely returned no data
+                # before treating this as a failure
+                no_data_elements = driver.find_elements(
+                    By.CSS_SELECTOR, "#DataMessageText"
+                )
+                if no_data_elements:
+                    print(f"  {rpt_type.upper()} report: {no_data_elements[0].text}")
+                    driver.quit()
+                    break  # no data to download — retrying won't change that
+                raise
 
-            # timeout_14 = 1000
-            # is_clickable_14 = EC.element_to_be_clickable(
-            #     (By.CSS_SELECTOR, 'a[id="DistrBtn"]')
-            # )
-            # export_button = False
-            # while not export_button:
-            #     export_button = is_clickable_14(driver)
-            #     sys.stdout.write(
-            #         f"\r  ... waited {timediff(start_time_14, time.time())} "
-            #         "so far for the export format button to become clickable"
-            #     )
-            #     sys.stdout.flush()
-            #     if not export_button:
-            #         if time.time() - start_time_14 > timeout_14:
-            #             raise TimeoutException(
-            #                 f"export format button not clickable after {timeout_14}s"
-            #             )
-            #         time.sleep(0.5)
-            # sys.stdout.write("\n")
-            # export_button.click()
             print(
                 f"  Waited {timediff(start_time_14, time.time())} for \
 the export format button to be clickable and then clicked it ..."
@@ -639,7 +640,7 @@ after {tz} seconds"
 
             latest_file(folder_path, sfx, new_file_name)
 
-            print(f"  Downloaded and renamed to: {new_file_name}")
+            print(f"  Downloaded and renamed to: {new_file_name}.{sfx}")
 
             if rpt_type == "fnav":
                 filen = os.path.join(folder_path, new_file_name + f".{sfx}")
@@ -675,7 +676,8 @@ after {tz} seconds"
 attempts failed for attempt {max_retries}."
                 )
 
-    print(f"\nDownloaded {new_file_name}.{sfx}")
+    print(f"\nDownloaded {new_file_name}.{sfx}\n")
+    print(f"{timediff(start_time_osprey, time.time())} run time")
     return new_file_name
 
 
@@ -691,8 +693,8 @@ us_holidays = holidays.US()
 eu_holidays = holidays.ECB()
 ny_holidays = holidays.NYSE()
 
-# example usage
-list(holidays.ZA(years=2025))
+# # example usage
+# list(holidays.ZA(years=2025))
 
 # calendar functions for prior month end and for most recent working day
 
@@ -1050,7 +1052,6 @@ def r_classifier(report_type, url_input, report_date=datetime.today()):
     from constants import pthPy, issuers_1
     from utilities import timediff
 
-    rptDate = report_date
     rptType = "CS1 format only" if report_type == "cs1" else "Reg 28 and Reg 30 only"
     url = url_input.replace('"', "")
 
@@ -1063,9 +1064,90 @@ def r_classifier(report_type, url_input, report_date=datetime.today()):
     xw.Book(pthPy).close()
 
     # run issuers_1.ipynb
-    subprocess.run([sys.executable, issuers_1])
+    # "-u" forces unbuffered stdout/stderr so the calling script sees
+    # issuers_1's tqdm progress bar update live instead of only at the end
+    subprocess.run([sys.executable, "-u", issuers_1])
 
     return print(
         f"{timediff(start_time_classifier, time.time())} \
-            executing issuers_1.ipynb"
+executing issuers_1.ipynb"
     )
+
+
+def r_classifier_db(report_type, url_input, report_date=datetime.today()):
+    """
+    Same as r_classifier(), but runs issuers_1_db.py instead of
+    issuers_1.py — for use with cs1_PARN_merge_csv_db.py's output,
+    which carries an extra "issuer_code" column that issuers_1.py's
+    fixed "A:J" column range doesn't account for.
+    """
+    import time
+
+    start_time_classifier = time.time()
+
+    import subprocess
+    import xlwings as xw
+    from constants import pthPy, issuers_1_db
+    from utilities import timediff
+
+    rptType = "CS1 format only" if report_type == "cs1" else "Reg 28 and Reg 30 only"
+    url = url_input.replace('"', "")
+
+    # updating "arc" sheet
+    xw.Book(pthPy).sheets("arc").range("V4").value = rptType
+    xw.Book(pthPy).sheets("arc").range("V8").value = url
+    xw.Book(pthPy).save()
+    xw.Book(pthPy).close()
+
+    # run issuers_1_db.py
+    subprocess.run([sys.executable, "-u", issuers_1_db])
+
+    return print(
+        f"{timediff(start_time_classifier, time.time())} \
+executing issuers_1_db.py"
+    )
+
+
+def max_nesting_depth(code_text):
+    max_depth = 0
+    current_depth = 0
+    for char in code_text:
+        if char in "({[":
+            current_depth += 1
+            max_depth = max(max_depth, current_depth)
+        elif char in ")}]":
+            current_depth -= 1
+    return max_depth
+
+
+def bankbal(report_date):
+    import pandas as pd
+    import os
+    from constants import pthOverdrafts
+
+    # if they're available, adjoin bank balances to dfSummary
+    # bank_file_sa = pthOverdrafts + rf"\{rptDate.strftime('%Y%m%d')}_overdrafts_sa.xlsx"
+    bank_file_sa = (
+        pthOverdrafts
+        + rf"\{report_date.strftime('%Y%m%d')}_unconfirmed_cash_balances_sa.xlsx"
+    )
+
+    # extract overdrafts
+    if os.path.exists(bank_file_sa):
+        bank = pd.read_excel(bank_file_sa, usecols="A,C,E,H", sheet_name=0, header=0)
+        # "Value Date", "Fund Code",
+        # "Unconfirmed Balance BNK", "Currency" on 1st sheet
+        # print(bank.columns,"\n", bank.shape)
+
+        bank = bank[bank["Currency"] == "ZAR"]
+        # print(bank.columns, "\n", bank.shape)
+        bank["Value Date"] = pd.to_datetime(bank["Value Date"])
+        bank_cols = {"Unconfirmed Balance BNK": "Bank Bal (ZAR)"}
+        bank.rename(columns=bank_cols, inplace=True)
+
+        return bank
+
+    else:
+        # return an empty dataframe
+        columns = ["Value Date", "Fund Code", "Bank Bal (ZAR)", "Currency"]
+        return pd.DataFrame(columns=columns)

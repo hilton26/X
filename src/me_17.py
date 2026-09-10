@@ -8,11 +8,11 @@
 # issuers_2 and issuers_3 files for the reporting month suffixed with _ddMmmyyyy.xlsx
 
 
-print("\n\n#######################################")
-print("#                                     #")
-print("#         START monthend17.py   X     #")
-print("#                                     #")
-print("#######################################\n\n")
+print("\n\n#############################################")
+print("#                                           #")
+print("#              START me_17.py   X           #")
+print("#                                           #")
+print("#############################################\n\n")
 
 
 import time
@@ -40,7 +40,10 @@ from utilities import timediff, prior_month_end
 
 # dataframe the issuers_2_ddMMMyyyy.xlsx and issuers_3_ddMMMyyyy.xlsx sheets
 start_time = time.time()
-print("Dataframing the issuers_2 and issuers_3 sheets used for month-end reporting")
+print(
+    "Dataframing the issuers_2 and issuers_3 sheets used \
+for month-end reporting"
+)
 
 df = pd.read_excel(pthPy, sheet_name="arc", usecols="AG", nrows=2)
 k = df.iloc[1, 0]
@@ -50,7 +53,6 @@ rptDate = (
 print(f" {rptDate.strftime('%A %d %b %Y')} reporting date from 'arc' sheet")
 
 # get the 'all' sheets from issuers_2,xlsx and issuers_3.xlsx and merge them
-# https://stackoverflow.com/questions/17977540/pandas-looking-up-the-list-of-sheets-in-an-excel-file
 issuers_2 = pthTest + rf"\issuers_2_{rptDate.strftime('%d%b%Y')}.xlsx"
 is2 = pd.read_excel(issuers_2, sheet_name=None)
 is2 = pd.read_excel(issuers_2, sheet_name=list(is2.keys())[0])
@@ -62,11 +64,13 @@ is3 = pd.read_excel(issuers_3, sheet_name=list(is3.keys())[0])
 rptDate_issuers_2 = datetime.strptime(issuers_2[-14:].replace(".xlsx", ""), "%d%b%Y")
 
 print(
-    f" {rptDate_issuers_2.strftime('%A %d %b %Y')} reporting date from issuers_2.xlsx"
+    f" {rptDate_issuers_2.strftime('%A %d %b %Y')} reporting date \
+from issuers_2.xlsx"
 )
 
 print(
-    f"{timediff(start_time, time.time())} dataframing the issuers_2 and _3 sheets used for month-end reporting\n"
+    f"{timediff(start_time, time.time())} dataframing the issuers_2 \
+and _3 sheets used for month-end reporting\n"
 )
 
 
@@ -400,8 +404,8 @@ print(
 )
 print(f"\n{timediff(start_time_me17, time.time())} monthend17 roundtrip\n")
 
-print("\n\n#######################################")
-print("#                                     #")
-print("#          END monthend17.py   X      #")
-print("#                                     #")
-print("#######################################\n\n")
+print("\n\n#############################################")
+print("#                                           #")
+print("#               END me_17.py   X            #")
+print("#                                           #")
+print("#############################################\n\n")

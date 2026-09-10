@@ -16,13 +16,16 @@ pre_issuers_1 = pth_gitrepo + r"/gemsmed_pre_issuers_1.py"
 pre_issuers_1_nb = pth_gitrepo + r"/gemsmed_pre_issuers_1.ipynb"
 gemsmed_report_nb = pth_gitrepo + r"/gemsmed_report.ipynb"
 issuers_1 = pth_gitrepo + r"/issuers_1.py"
+issuers_1_db = pth_gitrepo + r"/issuers_1_db.py"
 issuers_2 = pth_gitrepo + r"/issuers_2.py"
 issuers_3 = pth_gitrepo + r"/issuers_3.py"
 issuers_1_nb = pth_gitrepo + r"/issuers_1.ipynb"
 issuers_2_nb = pth_gitrepo + r"/issuers_2.ipynb"
 issuers_3_nb = pth_gitrepo + r"/issuers_3.ipynb"
 const = pth_gitrepo + r"/constants.py"
+derv_checker = pth_gitrepo + r"/derv_checker.py"  # NEW
 dc_do = pth_gitrepo + r"/derv_checker_downloading.py"
+dc_do_db = pth_gitrepo + r"/derv_checker_downloading_db.py"
 dc_co = pth_gitrepo + r"/derv_checker_compiling.py"
 dc_su = pth_gitrepo + r"/derv_checker_summarising.py"
 dc_fr = pth_gitrepo + r"/derv_checker_freecover.py"
@@ -30,6 +33,7 @@ dc_fc = pth_gitrepo + r"/derv_checker_freec.py"
 dc_ct = pth_gitrepo + r"/derv_checker_cact.py"
 dc_tb = pth_gitrepo + r"/derv_checker_table.py"
 pg_do = pth_gitrepo + r"/pgf_downloading.py"
+pg_do_db = pth_gitrepo + r"/pgf_downloading_db.py"
 pg_co = pth_gitrepo + r"/pgf_compiling.py"
 dc_do_nb = pth_gitrepo + r"/derv_checker_downloading.ipynb"
 dc_co_nb = pth_gitrepo + r"/derv_checker_compiling.ipynb"
@@ -37,11 +41,21 @@ dc_su_nb = pth_gitrepo + r"/derv_checker_summarising.ipynb"
 dc_fr_nb = pth_gitrepo + r"/derv_checker_freecover.ipynb"
 pg_do_nb = pth_gitrepo + r"/pgf_downloading.ipynb"
 pg_co_nb = pth_gitrepo + r"/pgf_compiling.ipynb"
+cs1_dl = pth_gitrepo + r"/cs1_parn_download.py"
+cs1_mg = pth_gitrepo + r"/cs1_parn_merge.py"
 prp = pth_gitrepo + r"/prp.py"
+lt_dl = pth_gitrepo + r"/lt_dl.py"
+lt_merge = pth_gitrepo + r"/lt_merge.py"
+lt_dl_merge = pth_gitrepo + r"/lt_dl_merge.py"
 
 # local folders
 pth_dl = Path.home() / "Downloads"
 pthLOCAL = os.path.join(Path.home(), "Documents", "DervFiles")
+
+# read-only PIM database access (see src/docs/database-access/07_DATABASE_SETUP.md)
+# ALWAYS use the read.only/read.only credential per the database access rules in CLAUDE.md
+db_host = "pim-cpt-mysql-prod.prescient.local"
+db_eagle_uri = f"mysql+pymysql://read.only:read.only@{db_host}:3306/prime_eagle"
 
 # network folders
 pthPIM = r"\\PIM-CPT-FS.prescient.local\PIM-Documents$"
@@ -78,6 +92,7 @@ pth_schib_tmpl = pthW + r"\!Reg28_SchIB.xlsx"
 derv_check_tmpl = pthDaily + r"\dervx.xlsx"
 derv_tmpl = pthW + r"\derv_template2.xlsx"
 pth_tbl2_static = pthW + r"\!Reg28 SchIB.xlsm"  # for r28_t2.py
+r28_t2 = pth_gitrepo + r"/r28_t2.py"
 pth_fx = pthW + r"\fx_rates.csv"
 pthCLNs = pthCmp + r"\MCaps\CLNs.xlsx"
 pth_me17 = pthCmp + r"\Reporting Requirements\Monthly Reports\MonthEnd17.xlsm"
@@ -95,11 +110,13 @@ pth_instr = pthCmp + r"\Portal\Instruments.xlsx"
 yll = pthTest + r"\yall.xlsx"
 mergd = pthTest + r"\merged.xlsx"
 iss_1 = pthTest + r"\issuers_1.xlsx"
+iss_1_db = pthTest + r"\issuers_1_db.xlsx"
 iss_2 = pthTest + r"\issuers_2.xlsx"
 iss_3 = pthTest + r"\issuers_3.xlsx"
 
 # htmls
 pthPrm = r"https://prime.prescient.co.za"
+pthPortal = r"https://prime.prescient.co.za/portfolio-management/compliance"
 ptl_login = pthPrm + r"/portfolio-management/compliance"
 ptl_b_rpt = ptl_login + r"/breach-report"  # breach report page
 ptl_b_rpt_n = ptl_login + r"/breach-report-new"  # breach report new page
@@ -221,6 +238,7 @@ report_types_dict = {
     "fnav": ["Fund Net Asset Value", eagle_root + "NetAsset"],
     "tcrf": ["Trades Cross Reference", eagle_root + "TRADES%20REFERENCE"],
     "cact": ["Cash Activity Details", eagle_root + "CSHACTIVITY"],
+    "perf": ["Performance Tracker with Net Return", eagle_root + "PERFORMANCE"],
 }
 
 # dictionary for unzipping MSCI index data

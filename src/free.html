@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button Example</title>
+    <script>
+        function executeScript() {
+            // Replace the path below with the actual path to your script
+            //var scriptPath = "C:\Users\hilton.netta\OneDrive - Prescient\py\gitrepo\process_iris_data.py"
+            var scriptPath = path.join('C:', 'Users', 'hilton.netta', 'OneDrive - Prescient', 'py', 'gitrepo', 'process_iris_data.py')
+            // Create a new script element
+            var script = document.createElement("script");
+            
+            // Set the source attribute to the script path
+            script.src = scriptPath;
+            
+            // Append the script element to the document body
+            document.body.appendChild(script);
+        }
+    </script>
+</head>
+<body>
+    <button onclick="executeScript()">Execute Script</button>
+</body>
+</html>

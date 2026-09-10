@@ -9,25 +9,25 @@ print("#            START 2/4 derv_checker_table.py   X      #")
 print("#                                                     #")
 print("#######################################################\n\n")
 
-# Libraries, libraries!
-
+# libraries, libraries!
 import time
-from turtle import left
 
 start_time = time.time()
 start_time_derv_compiling = start_time
-print("Importing libraries and setting paths ...")
+print("Importing libraries and paths ...")
 
 import pandas as pd
-import os
+import numpy as np
+import os, sys
+import xlwings as xw
 from datetime import timedelta
 from tqdm import tqdm
 from constants import pth_dl, pthSttlmnt, pthEXPORTS, pthOverdrafts
-from utilities import timediff, prior_working_day, parn_de
+from utilities import timediff, prior_working_day, parn_de, bankbal
 
 print(
-    f" {timediff(start_time, time.time())} importing libraries \
-and setting paths\n"
+    f" {timediff(start_time, time.time())} importing \
+libraries and paths\n"
 )
 
 # 1) Get report date, paths to the holdings and derivative
@@ -39,35 +39,7 @@ print(
 holdings and derivatives files...\n"
 )
 
-# df = pd.read_excel(pthPy, sheet_name="arc", header=None, usecols="A,E").dropna(
-#     subset=[0]
-# )
-# k = df.iloc[2, 1]
-# rptDate = (
-#     k if isinstance(k, datetime) else prior_working_day(datetime.today())
-# )  # prior working day or report date override; has type datetime()
-# summ_yn = df.iloc[3, 1]
-# funds = df[0].iloc[1:]  # type is pandas Series
-
-# # get paths to the expected holdings and derivative metric files
-# fPARN = os.path.join(
-#     pth_dl,
-#     f"PARN ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
-# )
-# fDE = os.path.join(
-#     pth_dl,
-#     f"DERV ({len(funds)}) {rptDate.strftime('%d%b%Y')}.csv",
-# )
-
-# # check if the required files have been downloaded, else exit
-# if not os.path.exists(fPARN) or not os.path.exists(fDE):
-#     sys.exit(
-#         f"\n\nStopping: missing expected download(s):\n"
-#         f"  {fPARN} which {'exists' if os.path.exists(fPARN) else 'does not exist'}\n"
-#         f"  {fDE} which {'exists' if os.path.exists(fDE) else 'does not exist'}\n\n"
-#     )
-
-fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold, batches = parn_de()
 
 # check if the required files have been downloaded, else continue
 if not os.path.exists(fPARN) or not os.path.exists(fDE):
@@ -78,14 +50,15 @@ if not os.path.exists(fPARN) or not os.path.exists(fDE):
     )
 
 # present report date and funds
+s = "" if len(funds) <= 1 else "s"
 print(
-    f" {rptDate.strftime('%A %d %b %Y')} for {len(funds)} funds:\n",
-    f"{(', ').join(funds.tolist())}",
+    f" {rptDate.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n",
+    f" {(', ').join(funds.tolist())}",
 )
 
-td = rptDate + timedelta(days=397)  # to determine < 13-month maturities
+td = pd.Timestamp(rptDate) + timedelta(days=397)  # to find < 13-mo maturities
 twoA = pd.read_excel(pthSttlmnt, sheet_name="Funds", usecols="A:B, D:E")
-# columns are 'Fund Code', 'Fund Name', 'UT', 'Team'
+# four columns: 'Fund Code', 'Fund Name', 'UT', 'Team'
 
 print(f" A summary sheet is{' not' if summ_yn == 'No' else ''} required\n")
 print(
@@ -110,7 +83,9 @@ fnames = wbH["Entity Name"].unique()
 fcodes = wbH["Entity ID"].unique()
 
 # 5) Convert derivative dataframe columns from str to float
-# https://stackoverflow.com/questions/55557004/getting-attributeerror-float-object-has-no-attribute-replace-error-while
+# https://stackoverflow.com/questions/55557004/
+# getting-attributeerror-float-object-
+# has-no-attribute-replace-error-while
 headsD = ["Nominal Holding", "Delta", "Market Value", "Effective Exposure"]
 for head in headsD:
     wbD[head] = [
@@ -135,7 +110,9 @@ wbH["i Position Effective Date"] = pd.to_datetime(wbH["i Position Effective Date
 
 # 8) Convert maturity date column from type object to
 # type datetime and 'NaT' to a long date in datetime format
-wbH["Maturity Date"] = pd.to_datetime(wbH["Maturity Date"])
+wbH["Maturity Date"] = pd.to_datetime(
+    wbH["Maturity Date"], format="mixed", errors="coerce"
+)
 # print(wbH.columns)
 
 
@@ -239,7 +216,7 @@ wbH.drop(columns=["_repo_sort_key", "_repo_id_key"], inplace=True)
 # 10) Convert holdings date columns to datetime format
 date_cols = ["i Position Effective Date", "Maturity Date", "Next Coupon Date"]
 for date_col in date_cols:
-    wbH[date_col] = pd.to_datetime(wbH[date_col])
+    wbH[date_col] = pd.to_datetime(wbH[date_col], format="mixed", dayfirst=False)
 
 # 11) Convert holdings numerical columns to numbers
 num_col_names = [
@@ -287,6 +264,11 @@ navs = wbH.groupby("Entity ID")[
     "Sum of Market Value Income"
 ].sum()  # (column N) this has type 'pandas.core.series.Series'
 nav = navs.to_dict()  # nav series changed to dictionary to make it lookupable
+zero_nav_funds = navs[
+    navs == 0
+].index.tolist()  # funds whose holdings net to a zero NAV
+if zero_nav_funds:
+    print(f"Funds with zero NAV: {zero_nav_funds}")
 
 # 14) Recalc the '% of Total Market Value' column per fund and then ...
 newTMV = []
@@ -355,6 +337,18 @@ summary_cols = ["Fund Code"]
 # print(dfSummary.columns)
 # print(type(funds), funds, len(funds))
 
+# check that every requested fund actually has holdings in the
+# downloaded PARN file before looping, else fail with a clear message
+missing_funds = sorted(set(funds) - set(fcodes))
+if missing_funds:
+    sys.exit(
+        f"Stopping: {len(missing_funds)} fund(s) requested in the 'arc' sheet "
+        f"have no matching 'Entity ID' in {os.path.basename(fPARN)}:\n"
+        f"  {', '.join(missing_funds)}\n"
+        f"Check for a fund code typo/mismatch, or that the fund has holdings "
+        f"to report for {rptDate.strftime('%d %b %Y')}."
+    )
+
 s = "" if len(funds) <= 1 else "s"
 for index, fund in enumerate(
     tqdm(
@@ -365,9 +359,13 @@ for {len(funds)} fund{s} at \
     )
 ):
     start_time = time.time()
-
     # get fund static
     fund_eagle_name = wbH[wbH["Entity ID"] == fund].iloc[0, 0]
+    ###### TEST ######
+    # print(index, "\n", fund)
+    # print(wbH[wbH["Entity ID"] == fund])
+    # print(wbH[wbH["Entity ID"] == fund].iloc[0, 0])
+    ###### TEST ######
     hold = wbH[wbH["Entity ID"] == fund]
     delt = wbD[wbD["Entity Name"] == fund_eagle_name]
     ftyp = twoA[twoA["Fund Code"] == fund].iloc[0, 3]
@@ -449,7 +447,7 @@ for {len(funds)} fund{s} at \
         if ftyp in ("UT", "ETF")
         else hold[
             (hold["Valuation First Level"] == "BONDS")
-            & (~hold["Sub Security Type"].isin(["REPO"]))
+            & (~hold["Sub Security Type"].isin(["CLN", "REPO"]))
         ]["Current Exposure"].sum()
     )
 
@@ -613,12 +611,18 @@ for {len(funds)} fund{s} at \
     # leverage
     excl = ["CASH", "MONEY MARKET", "UNKNOWN", "SYTH"]
     lvg_g = (
-        hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"].abs().sum()
+        np.nan
+        if nav == 0
+        else hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"]
+        .abs()
+        .sum()
         / nav
         * 100
     )  # leverage gross
     lvg_c = (
-        hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"].sum()
+        np.nan
+        if nav == 0
+        else hold[~hold["Valuation First Level"].isin(excl)]["Current Exposure"].sum()
         / nav
         * 100
     )  # leverage commitment (net)
@@ -668,7 +672,7 @@ for {len(funds)} fund{s} at \
     dfSummary.at[index, "Fund Code"] = fund
     dfSummary.at[index, "UT?"] = ftyp
     dfSummary.at[index, "#"] = dervs
-    dfSummary.at[index, "Cash Cover for UT"] = ailf + otc_mtm - listed_dervs + non_mmfs
+    dfSummary.at[index, "Cash Cover"] = ailf + otc_mtm - listed_dervs + non_mmfs
     dfSummary.at[index, "AiLF"] = ailf
     dfSummary.at[index, "Cash"] = cash
     dfSummary.at[index, "MMFs"] = mmfs
@@ -685,14 +689,14 @@ for {len(funds)} fund{s} at \
     dfSummary.at[index, "TRSes"] = min(0, trs)
     dfSummary.at[index, "\u2211 OTC Derivatives"] = otc_mtm
     dfSummary.at[index, "Cover for OTC Derivatives"] = ailf + otc_mtm
-    dfSummary.at[index, "Equity Futures SA"] = -max(0, eqty_futs_sa)
-    dfSummary.at[index, "Equity Futures ex-SA"] = -max(0, eqty_futs_frgn)
-    dfSummary.at[index, "Equity Futures ex-SA MtM P&L"] = -eqty_fut_frgn_mtm
-    dfSummary.at[index, "Bond Futures SA"] = -max(0, bond_futs_sa)
-    dfSummary.at[index, "Bond Futures ex-SA"] = -max(0, bond_futs_frgn)
-    dfSummary.at[index, "Bond Futures ex-SA MtM P&L"] = -bond_futs_frgn_mtm
-    dfSummary.at[index, "Currency Futures"] = -max(0, crry_futs)
-    dfSummary.at[index, "\2211 Listed Derivatives"] = listed_dervs
+    dfSummary.at[index, "Equity Futures SA"] = max(0, eqty_futs_sa)
+    dfSummary.at[index, "Equity Futures ex-SA"] = max(0, eqty_futs_frgn)
+    dfSummary.at[index, "Equity Futures ex-SA MtM P&L"] = eqty_fut_frgn_mtm
+    dfSummary.at[index, "Bond Futures SA"] = max(0, bond_futs_sa)
+    dfSummary.at[index, "Bond Futures ex-SA"] = max(0, bond_futs_frgn)
+    dfSummary.at[index, "Bond Futures ex-SA MtM P&L"] = bond_futs_frgn_mtm
+    dfSummary.at[index, "Currency Futures"] = max(0, crry_futs)
+    dfSummary.at[index, "\u2211 Listed Derivatives"] = listed_dervs
     dfSummary.at[index, "Cover for All Derivatives"] = ailf + otc_mtm - listed_dervs
     dfSummary.at[index, "Incl CLNs & longer-dated debt"] = bonds + clns
     dfSummary.at[index, "Non_MMFs"] = non_mmfs
@@ -730,34 +734,85 @@ for {len(funds)} fund{s} at \
     ]
     for col in dfSummary.columns:
         if col not in excl_cols:
-            dfSummary.at[index, col] = dfSummary.at[index, col] / nav * 100
+            dfSummary.at[index, col] = (
+                np.nan if nav == 0 else dfSummary.at[index, col] / nav * 100
+            )
 
 # print(dfSummary.columns, "\n", dfSummary.shape)
+
+################
+# if prior day's file exists append its NAV to today's summary
 
 # look up prior day's NAV
 ystdy_date = prior_working_day(rptDate).strftime("%Y%m%d")
-ystdy_filepath = pthEXPORTS + rf"\{ystdy_date}_derv_calc.xlsx"
-ystdy = pd.read_excel(ystdy_filepath, usecols=["Fund Code", "NAV"]).dropna()
-# print(ystdy.columns, "\n", ystdy.shape)
-ystdy = ystdy.drop_duplicates(subset=["Fund Code"])
-ystdy.head(15)
-print(ystdy.columns, "\n", ystdy.shape)
-# print(dfSummary.columns, "\n", dfSummary.shape)
-
-# insert yesterday's NAV in the summary derivative calc dataframe
-
-dfSummary = pd.merge(
-    dfSummary, ystdy, on="Fund Code", how="left", suffixes=("_x", "_y")
-)
-# print(dfSummary.columns, "\n", dfSummary.shape)  # length changes from 153 to 281
-
+ystdy_path = pthEXPORTS + rf"\{ystdy_date}_derv_calc.xlsx"
 y_date = prior_working_day(rptDate).strftime("%a %d %b %Y")
-dfSummary = dfSummary.rename(columns={"NAV_x": "NAV", "NAV_y": f"NAV {y_date}"})
-# print(dfSummary.columns, "\n", dfSummary.shape)  # length changes from 153 to 281
+ystdy_dwnl = rf"FNAV ({len(funds)}) {prior_working_day(rptDate).strftime('%d%b%Y')}.csv"
 
-# prior NAV column name
-prior_nav = dfSummary[f"NAV {y_date}"]
-# print(prior_nav.shape)
+if os.path.isfile(ystdy_path) and os.path.getsize(ystdy_path) > 10:
+    print(f"\n{ystdy_date}_derv_calc.xlsx data will be added to today's file\n")
+    ystdy = pd.read_excel(
+        ystdy_path, usecols=["Fund Code", "NAV", "Cash Cover"]
+    ).dropna()
+    # print(ystdy.columns, "\n", ystdy.shape)
+    ystdy = ystdy.drop_duplicates(subset=["Fund Code"])
+
+    # insert yesterday's NAV in the summary derivative calc dataframe
+    dfSummary = pd.merge(
+        dfSummary, ystdy, on="Fund Code", how="left", suffixes=("_x", "_y")
+    )
+    # print(dfSummary.columns, "\n", dfSummary.shape)
+    # # length changes from 153 to 281
+
+    dfSummary = dfSummary.rename(
+        columns={
+            "NAV_x": "NAV",
+            "NAV_y": f"NAV {y_date}",
+            "Cash Cover_x": "Cash Cover",
+            "Cash Cover_y": f"Cash Cover {y_date}",
+        }
+    )
+
+    # print(dfSummary.columns, "\n", dfSummary.shape)
+    # # length changes from 153 to 281
+
+    # prior NAV column name
+    prior_nav = dfSummary[f"NAV {y_date}"]
+    # print(prior_nav.shape)
+
+    # move prior day cover column to sit just before the "AiLF" column
+    dfSummary.insert(
+        dfSummary.columns.get_loc("AiLF"),
+        f"Cash Cover {y_date}",
+        dfSummary.pop(f"Cash Cover {y_date}"),
+    )
+
+
+else:
+    print(
+        f"\nPrior day's NAVs will \
+be obtained from the downloaded prior day NAVs\n"
+    )
+
+    ystdy = pd.read_csv(
+        os.path.join(pth_dl, ystdy_dwnl),
+        usecols=["NAV Entity ID", "Total Net Assets"],
+    ).dropna()
+    ystdy["Total Net Assets"] = (
+        ystdy["Total Net Assets"].astype(str).str.replace(",", "").astype(float)
+    )
+    ystdy = ystdy.drop_duplicates(subset=["NAV Entity ID"])
+
+    # insert yesterday's NAV in the summary derivative calc dataframe
+    dfSummary = pd.merge(
+        dfSummary,
+        ystdy,
+        left_on="Fund Code",
+        right_on="NAV Entity ID",
+        how="left",
+    ).drop(columns=["NAV Entity ID"])
+
+    dfSummary = dfSummary.rename(columns={"Total Net Assets": f"NAV {y_date}"})
 
 # add a fund name column
 dfSummary = pd.merge(
@@ -765,34 +820,38 @@ dfSummary = pd.merge(
 )
 # print(dfSummary.columns, "\n", dfSummary.shape)
 
-# suffix fund code to fund name
-dfSummary["Fund Name"] = dfSummary["Fund Name"] + "(" + dfSummary["Fund Code"] + ")"
-# print(dfSummary.head(3))
+################
 
-# if it's available, adjoin bank balances to dfSummary
-bank_file_sa = pthOverdrafts + rf"\{rptDate.strftime('%Y%m%d')}_overdrafts_sa.xlsx"
-if not os.path.isfile(bank_file_sa):
+
+# suffix fund code to fund name
+dfSummary["Fund Name"] = dfSummary["Fund Name"]  # + " (" + dfSummary["Fund Code"] + ")"
+print(dfSummary.head(3))
+
+# # if they're available, adjoin bank balances to dfSummary
+# # bank_file_sa = pthOverdrafts + rf"\{rptDate.strftime('%Y%m%d')}_overdrafts_sa.xlsx"
+bank_file_sa = (
+    pthOverdrafts + rf"\{rptDate.strftime('%Y%m%d')}_unconfirmed_cash_balances_sa.xlsx"
+)
+if (not os.path.isfile(bank_file_sa)) or (os.path.getsize(bank_file_sa) < 10):
     print(
-        "Bank balances not saved so will not \
-be appended to the derivative summary"
+        f"\nBank balances will not be appended to the derivative \
+summary as the overdraft file size does not exist or is too small\n"
     )
     pass
 else:
     print(
-        "Bank balances will be appended \
-to the derivative summary"
+        f"\nOverdraft bank balances \
+will be appended to the derivative summary\n"
     )
-    bank = pd.read_excel(
-        bank_file_sa, usecols="A,C,D,G", sheet_name=0, header=0, skiprows=range(11)
-    )
-    bank = bank[bank["Currency"] == "ZAR"]
-    # print(bank.columns, "\n", bank.shape)
-    bank["Value Date"] = pd.to_datetime(bank["Value Date"])
-    bank_cols = {"Client ID": "Fund Code", "Closing Balance BNK": "Bank Bal"}
-    bank.rename(columns=bank_cols, inplace=True)
-    # print(bank.columns, "\n", bank.shape)
+    bank = bankbal(rptDate)  # get the day's bank balances dataframe
     dfSummary = dfSummary.merge(
-        bank[["Fund Code", "Bank Bal"]], on="Fund Code", how="left"
+        bank[["Fund Code", "Bank Bal (ZAR)"]], on="Fund Code", how="left"
+    )
+    # place "Bank Bal (ZAR)" before "Fund Name"
+    dfSummary.insert(
+        dfSummary.columns.get_loc("Fund Name"),
+        "Bank Bal (ZAR)",
+        dfSummary.pop("Bank Bal (ZAR)"),
     )
     # print(dfSummary.columns, "\n", dfSummary.shape)
 
@@ -803,7 +862,17 @@ fCACT = os.path.join(
 )
 if not os.path.isfile(fCACT):
     print(f"  {fCACT} does not exist")
-    pass
+    dfSummary["\u0394 NAV (%)"] = (
+        dfSummary["NAV"] / dfSummary[f"NAV {y_date}"] * 100 - 100
+    )
+
+    # move prior day cover column to sit just before the "AiLF" column
+    dfSummary.insert(
+        dfSummary.columns.get_loc("AiLF"),
+        "\u0394 NAV (%)",
+        dfSummary.pop(f"\u0394 NAV (%)"),
+    )
+
 else:
     # 1. Load cash activities dataframe
     wbC = pd.read_csv(fCACT)
@@ -843,13 +912,8 @@ else:
     cfl = cfl.groupby(["Entity ID"], as_index=False)["Base Amount"].sum()
     # print(cfl.shape,"\n",cfl.columns)
 
-    # TEST for sum
-    cfl[cfl["Entity ID"] == "PETFIP"][["Entity ID", "Base Amount"]]
-
     # get the unique "Entity ID" entries from wbH
     wbH_unq = wbH.drop_duplicates(subset=["Entity ID"])[["Entity Name", "Entity ID"]]
-
-    # print(wbC.shape, "\n", wbH_unq.shape)
 
     # 4. Merge to get Entity ID and fund name
     cfl = pd.merge(
@@ -857,14 +921,14 @@ else:
         wbH_unq,
         on="Entity ID",
         how="right",
-    ).rename(columns={"Entity ID": "Fund Code", "Base Amount": "Net In(Out) Flow"})
+    ).rename(columns={"Entity ID": "Fund Code", "Base Amount": "Net Cash In(Out) Flow"})
 
     # # TEST, should come to (#funds, 3)
     # print(wbC.columns,"\n", wbC.shape)
 
-    # 4. Add a Net In(Out) Flow xolumn to the summary dataframe
+    # 4. Add a Net Cash In(Out) Flow xolumn to the summary dataframe
     dfSummary = dfSummary.merge(
-        cfl[["Fund Code", "Net In(Out) Flow"]],
+        cfl[["Fund Code", "Net Cash In(Out) Flow"]],
         on="Fund Code",
         how="left",
     )
@@ -873,46 +937,57 @@ else:
     # print(dfSummary.columns, "\n", dfSummary.shape)
 
     # calculate % in(out)flow
-    dfSummary["Net In(Out) Flow (%)"] = (
-        (dfSummary["Net In(Out) Flow"] / prior_nav) * 100
+    dfSummary["Net Cash In(Out) Flow (%)"] = (
+        (dfSummary["Net Cash In(Out) Flow"] / prior_nav) * 100
     ).mask(prior_nav.isna(), "fresh flow")
     # # TEST, should come to (#funds, 45)
     # print(dfSummary.columns, "\n", dfSummary.shape)
 
     # add a new column showing change in NAV
-    dfSummary["Net In(Out) Flow"] = dfSummary["Net In(Out) Flow"].fillna(0)
+    dfSummary["Net Cash In(Out) Flow"] = dfSummary["Net Cash In(Out) Flow"].fillna(0)
     dfSummary["\u0394 NAV (%)"] = (
-        (dfSummary["NAV"] - dfSummary["Net In(Out) Flow"]) / prior_nav - 1
+        (dfSummary["NAV"] - dfSummary["Net Cash In(Out) Flow"]) / prior_nav - 1
     ) * 100
 
-    # move "\u0394 NAV (%)" and "Net In(Out)flow (%)" to sit just before the "AiLF" column
+    # move "\u0394 NAV (%)" and "Net Cash In(Out)flow (%)"
+    # to sit just before the "AiLF" column
     cols = [
         c
         for c in dfSummary.columns
-        if c not in ("\u0394 NAV (%)", "Net In(Out) Flow (%)")
+        if c not in ("\u0394 NAV (%)", "Net Cash In(Out) Flow (%)")
     ]  # "\u0394" makes a delta sumbol
     ailf_pos = cols.index("AiLF")
-    cols[ailf_pos:ailf_pos] = ["\u0394 NAV (%)", "Net In(Out) Flow (%)"]
+    cols[ailf_pos:ailf_pos] = ["\u0394 NAV (%)", "Net Cash In(Out) Flow (%)"]
     dfSummary = dfSummary[cols]
 
+    # move "Net Cash In(Out) Flow" to sit just before the "Fund Name" column
+    dfSummary.insert(
+        dfSummary.columns.get_loc("Fund Name"),
+        "Net Cash In(Out) Flow",
+        dfSummary.pop("Net Cash In(Out) Flow"),
+    )
+
 # sort the summary dataframe and save it to a new Excel file
+
 start_time = time.time()
 
 summary = dfSummary.sort_values(
-    by="Cash Cover for UT", ascending=True
-)  # sort the cover calc dataframe by 'Cash Cover for UT' in ascending order
+    by="Cash Cover", ascending=True
+)  # sort the cover calc dataframe by 'Cash Cover' in ascending order
 
-ut_types = ["UT", "≠UT", "UCITS", "SAA", "TAA", "ICAV"]
+ut_types = ["UT", "≠UT", "UCITS", "SAA", "TAA", "ICAV", "RHF"]
 sorted_summary = pd.DataFrame([])  # empty dataframe
 for ut_type in ut_types:  # stack the > 0 derivative funds first ...
     summary_subset = summary[(summary["UT?"] == ut_type) & (summary["#"] != 0)]
     sorted_summary = pd.concat([sorted_summary, summary_subset])
-    # sorted_summary = sorted_summary.sort_values(by = 'Cash Cover for UT', ascending = False) # sort the summary dataframe
+    # sorted_summary = sorted_summary.sort_values(by = 'Cash Cover',
+    # ascending = False) # sort the summary dataframe
 
 for ut_type in ut_types:  # ... then stack the no derivative funds
     summary_subset = summary[(summary["UT?"] == ut_type) & (summary["#"] == 0)]
     sorted_summary = pd.concat([sorted_summary, summary_subset])
-    # sorted_summary = sorted_summary.sort_values(by = 'Cash Cover for UT', ascending = False) # sort the summary dataframe
+    # sorted_summary = sorted_summary.sort_values(by = 'Cash Cover',
+    # ascending = False) # sort the summary dataframe
 
 sorted_summary.reset_index(inplace=True, drop=True)
 
@@ -929,6 +1004,11 @@ wbD_extra_cols = [
 ]
 wbD_for_merge = wbD[["Entity Name", "Primary Asset ID"] + wbD_extra_cols].rename(
     columns={"Primary Asset ID": "PrimaryAssetID"}
+)
+# when a fund has no derivatives, "Primary Asset ID" comes back all-NaN and is read
+# as float64, which pandas won't merge against wbH's string PrimaryAssetID column
+wbD_for_merge["PrimaryAssetID"] = (
+    wbD_for_merge["PrimaryAssetID"].astype(str).str.replace(r"\.0$", "", regex=True)
 )
 wbHD = wbH.merge(wbD_for_merge, on=["Entity Name", "PrimaryAssetID"], how="left")
 
@@ -960,12 +1040,23 @@ derv_calc_filepath = os.path.join(
     pthEXPORTS, f"{rptDate.strftime('%Y%m%d')}_derv_calc.xlsx"
 )  # YYYYmmdd_derv_calc.xlsx
 
+# close the file first if it's already open, so the write below doesn't fail
+derv_calc_filename = os.path.basename(derv_calc_filepath)
+for app in xw.apps:
+    for book in app.books:
+        if book.name.lower() == derv_calc_filename.lower():
+            book.close()
+
 # write the sorted summary to Excel
 sorted_summary.to_excel(derv_calc_filepath, sheet_name="Summary", index=False)
 with pd.ExcelWriter(derv_calc_filepath, mode="a", engine="openpyxl") as writer:
-    funds_missing_exposure.to_excel(writer, sheet_name="deltas_missing", index=False)
+    funds_missing_exposure.to_excel(
+        writer,
+        sheet_name=f"deltas_missing ({len(funds_missing_exposure)})",
+        index=False,
+    )
 
-# preent funds and derivatives without effective exposures
+# present funds and derivatives without effective exposures
 s1 = "" if len(funds_missing_exposure["Entity ID"].unique()) == 1 else "s"
 s2 = "" if funds_missing_exposure["Ticker"].nunique() == 1 else "s"
 print(
@@ -989,6 +1080,8 @@ holdings_filename = f"{rptDate.strftime('%Y%m%d')}_holdings.xlsx"
 xlsx_path = os.path.join(pthEXPORTS, "Holdings", holdings_filename)
 
 wbHD.to_excel(xlsx_path, sheet_name="holdings", index=False)
+
+# cash activities - to append or not
 if not os.path.isfile(fCACT):
     print(
         f"\nCash activities for {rptDate.strftime('%a %d %b %Y')} \
@@ -1003,7 +1096,9 @@ will be appended to the derivative summary sheet\n"
     with pd.ExcelWriter(xlsx_path, mode="a", engine="openpyxl") as writer:
         wbC.to_excel(writer, sheet_name="trades", index=False)
         funds_missing_exposure.to_excel(
-            writer, sheet_name="deltas_missing", index=False
+            writer,
+            sheet_name=f"deltas_missing ({len(funds_missing_exposure)})",
+            index=False,
         )
 
 print(

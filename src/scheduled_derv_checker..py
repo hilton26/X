@@ -59,7 +59,7 @@ was completed {time.ctime(os.path.getmtime(frcv_file))}"
         return
     else:
         try:
-            print("\n", "Starting derv_checker_downloading.ipynb", "\n")
+            print("\n", "Starting derv_checker_downloading.py", "\n")
             subprocess.run([sys.executable, dc_do])
             print(
                 "\n",
@@ -93,7 +93,8 @@ was completed {time.ctime(os.path.getmtime(frcv_file))}"
             if os.path.isfile(filename):
                 print(
                     f"{datetime.now().strftime('%Hh%M:%Ss %a %d %b %Y')}: \
-                {filename.removeprefix(pthEXPORTS)} was completed at {time.ctime(os.path.getmtime(filename))}",
+                {filename.removeprefix(pthEXPORTS)} was completed \
+at {time.ctime(os.path.getmtime(filename))}",
                     "\n",
                 )
 
@@ -102,8 +103,9 @@ was completed {time.ctime(os.path.getmtime(frcv_file))}"
 
         print(
             "\n",
-            f"{timediff(start_time_roundtrip, time.time())} roundtrip time to download and \
-complete {rptDate.strftime('%d %b %Y')} derivative cover reports",
+            f"{timediff(start_time_roundtrip, time.time())} \
+roundtrip time to download and complete \
+{rptDate.strftime('%d %b %Y')} derivative cover reports",
         )
 
 
@@ -112,7 +114,7 @@ complete {rptDate.strftime('%d %b %Y')} derivative cover reports",
 from datetime import datetime, timedelta
 
 # list of times every 15 minutes from 8:45 AM to 17:30
-start = datetime.strptime("08:45", "%H:%M")
+start = datetime.strptime("13:28", "%H:%M")
 end = datetime.strptime("19:30", "%H:%M")
 increment = 10  # every 15 minutes
 
@@ -122,7 +124,7 @@ while current <= end:
     times.append(current.strftime("%H:%M"))
     current += timedelta(minutes=increment)
 
-print(f"{increment} minute cadence: {', '.join(times)}")
+print("\n", f"{increment} minute cadence: {', '.join(times)}")
 
 
 # scheduler    https://pypi.org/project/schedule/

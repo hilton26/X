@@ -5,11 +5,11 @@
 #
 # ### To generate multiple Reg 28 Table 2 reports
 
-print("\n\n##############################################")
-print("#                                            #")
-print("#              START r28_t2.py  X            #")
-print("#                                            #")
-print("##############################################\n\n")
+print("\n\n#######################################")
+print("#                                     #")
+print("#           START r28_t2.py   X       #")
+print("#                                     #")
+print("#######################################\n\n")
 
 # libraries, libraries!
 import time
@@ -21,7 +21,7 @@ print(f"Importing libraries ...")
 import pandas as pd
 import openpyxl, os
 from datetime import datetime
-from tqdm import tqdm 
+from tqdm import tqdm
 from constants import (
     pthPy,
     pthSttlmnt,
@@ -407,8 +407,8 @@ print(
 at {rptDate.strftime('%d%b%Y')} completed and stored in the test folder"
 )
 
-print("\n\n##############################################")
-print("#                                            #")
-print("#               END r28_t2.py   X            #")
-print("#                                            #")
-print("##############################################\n\n")
+print("\n\n#######################################")
+print("#                                     #")
+print("#            END r28_t2.py   X        #")
+print("#                                     #")
+print("#######################################\n\n")

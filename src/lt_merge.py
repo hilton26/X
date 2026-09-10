@@ -1,8 +1,8 @@
-print("\n\n################################")
-print("#                              #")
-print("#       START lt_merge.py  X   #")
-print("#                              #")
-print("################################\n\n")
+print("\n\n#######################################")
+print("#                                     #")
+print("#          START lt_merge.py  X       #")
+print("#                                     #")
+print("#######################################\n\n")
 
 # libraries, libraries!
 import time
@@ -18,7 +18,6 @@ from utilities import (
     osprey,
     r_classifier,
 )
-import subprocess
 
 start_time = time.time()
 start_time_merge_dl = time.time()
@@ -47,7 +46,7 @@ to be downloaded:\n  {(', ').join(funds)}"
 )
 print(f"\n {timediff(start_time, time.time())} collecting input data\n")
 
-# dataframe the lookthrough holdings saved as csvs in the local downloads folder
+# dataframe the lookthrough holdings saved as csvs in local \Downloads
 start_time = time.time()
 print("Dataframing the lookthrough holdings ...\n")
 
@@ -72,7 +71,10 @@ list_holdings = holdings.iloc[:, 0].unique()
 diff_funds = [item for item in list_arc if item not in list_holdings]
 diff_funds
 s = "'s" if len(diff_funds) == 1 else "s'"
-print(f"{len(diff_funds)} fund{s} holdings not downloaded:\n {(',').join(diff_funds)}")
+print(
+    f"{len(diff_funds)} fund{s} holdings \
+not downloaded:\n {(',').join(diff_funds)}"
+)
 
 # convert value columns to type float
 holdings_val_cols = ["End Market Value", "Closing Exposure PA"]
@@ -85,15 +87,34 @@ holdings[holdings_val_cols] = (
 # add the report date at top of the tenth column, column "J"
 holdings[f"{rptDate.strftime('%d %b %Y')}"] = None
 
+# identify duplicate fund holdings, i.e. the same instrument
+# appearing more than once for the same fund
+dup_cols = ["Entity Name", "Investment Type", "i Issue Name", "Primary Asset ID"]
+duplicate_holdings = holdings[
+    holdings.duplicated(subset=dup_cols, keep=False)
+].sort_values(dup_cols)
+n_dups = duplicate_holdings[dup_cols].drop_duplicates().shape[0]
+s = "" if n_dups == 1 else "s"
+if n_dups:
+    dups_by_fund = duplicate_holdings.groupby("Entity Name").size()
+    print(f"\nWarning: {n_dups} duplicate holding{s} \
+found over {len(dups_by_fund)} funds:")
+    for fund, count in dups_by_fund.items():
+        print(f"  {fund}: {count} duplicate row{'' if count == 1 else 's'}")
+    holdings = holdings.drop_duplicates(subset=dup_cols, keep="first")
+else:
+    print("\nNo duplicate fund holdings found.\n")
+
 print(
-    f"\n {timediff(start_time, time.time())} dataframing \
-the {len(holdings['Entity Name'].unique())} lookthrough holdings"
+    f"\n {timediff(start_time, time.time())} dataframing the \
+{len(holdings['Entity Name'].unique())} lookthrough holdings"
 )
 
 # get the fund NAVs
 start_time = time.time()
 print(
-    f"Getting the {len(funds)} lookthrough funds' NAVs as at {rptDate.strftime('%A %d %B %Y')} with osprey() ..."
+    f"Getting the {len(funds)} lookthrough funds' NAVs as \
+at {rptDate.strftime('%A %d %B %Y')} with osprey() ..."
 )
 
 name = "LT"
@@ -104,7 +125,8 @@ navs_fln = os.path.join(
 
 if os.path.exists(navs_fln):
     print(
-        f" Lookthrough fund NAVs as at {rptDate.strftime('%a %d %b %Y')} already downloaded: {navs_fln}"
+        f" Lookthrough fund NAVs as at {rptDate.strftime('%a %d %b %Y')} \
+already downloaded: {navs_fln}"
     )
     pass
 else:
@@ -132,8 +154,9 @@ navs["Total Net Assets"] = (
 print(f"\n{navs_fln}\n")
 
 print(
-    f" {timediff(start_time, time.time())} getting {len(navs)} funds' NAV{'s' if len(navs) != 1 else ''} as at {rptDate.strftime('%A %d %B %Y')} \
-with osprey()"
+    f" {timediff(start_time, time.time())} getting {len(navs)} \
+funds' NAV{'s' if len(navs) != 1 else ''} as at \
+{rptDate.strftime('%A %d %B %Y')} with osprey()"
 )
 
 # merge the lookthrough holdings and NAVs, and compare their totals
@@ -146,10 +169,9 @@ holdings_totals = holdings.groupby("Entity Name").sum(numeric_only=True)[
     holdings_val_cols
 ]
 
-len(holdings_totals)
-
-holdings_totals.info()
-navs.info()
+# len(holdings_totals)
+# holdings_totals.info()
+# navs.info()
 
 sums_cf = holdings_totals.merge(
     navs, how="left", left_on="Entity Name", right_on="NAV Entity ID"
@@ -190,22 +212,34 @@ sums_cf = sums_cf[cols_order]
 sums_cf.info()
 
 print(
-    f" {timediff(start_time, time.time())} merging and comparing the {len(funds)} \
-lookthroughs and NAVs as at {rptDate.strftime('%A %d %B %Y')}"
+    f" {timediff(start_time, time.time())} merging \
+and comparing the {len(funds)} lookthroughs and NAVs \
+as at {rptDate.strftime('%A %d %B %Y')}"
 )
 
-# convert the lookthrough holdings into Reg 28 format with corresponding headings
+# convert the lookthrough holdings into Reg 28
+# format with corresponding headings
 start_time = time.time()
-print(f"Converting the lookthrough holdings in readiness for Reg 28 classification ...")
+print(
+    "\nConverting the lookthrough holdings in \
+readiness for Reg 28 classification ...\n"
+)
 
 s = "" if len(funds) == 1 else "s"
 lt_fname = os.path.join(
-    pthTest, f"LT holdings ({len(funds)}) {rptDate.strftime('%d%b%Y')}.xlsx"
+    pthTest,
+    f"LT holdings ({len(funds)}) \
+{rptDate.strftime('%d%b%Y')}.xlsx",
 )
 
-print("Writing the lookthrough holdings dataframe and navs dataframe to a sheet ...")
+print(
+    "\nWriting the lookthrough holdings, navs, and \
+undownloaded funds dataframes to a sheet ...\n"
+)
 
-writer = pd.ExcelWriter(lt_fname, engine="xlsxwriter")  # instantiate a sheet writer
+undownloaded = pd.DataFrame(diff_funds, columns=["Undownloaded Funds"])
+# instantiate a sheet writer
+writer = pd.ExcelWriter(lt_fname, engine="xlsxwriter")
 holdings.to_excel(
     writer, index=False, sheet_name="All"
 )  # write the look-through holdings sheet
@@ -213,28 +247,33 @@ navs.to_excel(writer, index=False, sheet_name="NAVs")  # write the NAVs sheet
 sums_cf.to_excel(
     writer, index=False, sheet_name="Compare"
 )  # write the NAV comparison sheet
-writer.close()  # https://pandas.pydata.org/docs/reference/api/pandas.ExcelWriter.html   class for writing DataFrame objects into excel sheets
+undownloaded.to_excel(
+    writer, index=False, sheet_name="Undownloaded"
+)  # funds not downloaded
+writer.close()  # class for writing DataFrame objects into excel sheets
 
 print(f" \n{lt_fname}\n")
 
 print(
-    f" {timediff(start_time, time.time())} writing the \
+    f"\n {timediff(start_time, time.time())} writing the \
 lookthrough holdings dataframe and navs dataframe to a sheet\n"
 )
 
 # ready for the Reg 28 reporting script
+os.startfile(lt_fname)
 
 print(
-    "\n",
-    f"{timediff(start_time_merge_dl, time.time())} roundtrip to \
+    f"\n{timediff(start_time_merge_dl, time.time())} roundtrip to \
 download and merge lookthroughs\n",
 )
 
-# call the classifier function
+
+# call the classifier function to run the classifications
 r_classifier("r28", lt_fname, rptDate)
 
-print("\n\n################################")
-print("#                              #")
-print("#       END lt_merge.py  X     #")
-print("#                              #")
-print("################################\n\n")
+
+print("\n\n#######################################")
+print("#                                     #")
+print("#           END lt_merge.py  X        #")
+print("#                                     #")
+print("#######################################\n\n")

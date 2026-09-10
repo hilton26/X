@@ -22,16 +22,15 @@ print("\n\nImporting libraries ...\n")
 # load libraries
 import pandas as pd
 import os, sys, subprocess
+from datetime import datetime
 from send2trash import send2trash
-from constants import pthEXPORTS, pth_dl, pthTest, pthOverdrafts
-from utilities import timediff, osprey, parn_de
+from constants import pthEXPORTS, pth_dl, pthOverdrafts
+from utilities import timediff, osprey, parn_de, prior_working_day
 
-fund_load = 200  # else 2 separate "half1" and "half2" osprey() calls
-cact_sets = 6  # number of batches of CACT download files
+fund_load = 300  # else 2 separate "half1" and "half2" osprey() calls
 
 # get report date and selected summary sheet option
-fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
-
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold, batches = parn_de()
 
 print(f"{timediff(start_time, time.time())} importing libraries\n")
 
@@ -58,9 +57,32 @@ print(
 for {len(funds)} funds:\n {(',').join(funds)}\n",
 )
 
+#######################
+# check if prior day's NAV exists
+ystdy_date = prior_working_day(rptDate).strftime("%Y%m%d")
+ystdy_path = pthEXPORTS + rf"\{ystdy_date}_derv_calc.xlsx"
+y_date = datetime.strptime(ystdy_date, "%Y%m%d")
+ystdy_dwnl = rf"FNAV ({len(funds)}) {y_date.strftime('%d%b%Y')}.csv"
+
+if os.path.isfile(ystdy_path) and os.path.getsize(ystdy_path) > 10:
+    print(
+        f"\n {ystdy_date}_derv_calc.xlsx NAVs \
+will be added to today's file\n"
+    )
+    pass
+else:
+    print(f"\n {ystdy_date} NAVs will be downloaded")
+    if os.path.isfile(os.path.join(pth_dl, ystdy_dwnl)):
+        print(f" {ystdy_dwnl} already exists")
+        pass
+    else:
+        osprey("fnav", (",").join(funds), y_date, y_date, "", "csv")
+#######################
+
+
 # download derivative metrics
 start_time = time.time()
-print("Downloading and then saving derivative data ...")
+print("\nDownloading and then saving derivative data ...")
 
 # check if the file was already downloaded before running osprey()
 if os.path.isfile(os.path.join(pth_dl, derv_name)):
@@ -144,7 +166,7 @@ else:  # else get all the holdings in one go
         os.path.exists(os.path.join(pth_dl, full_name))
         and os.path.getsize(os.path.join(pth_dl, full_name)) > 0
     ):
-        print(f"  {full_name} already exists\n")
+        print(f"  {full_name} already exists")
         pass
     else:
         start_time_h = time.time()
@@ -153,8 +175,6 @@ else:  # else get all the holdings in one go
             f"  {timediff(start_time_h, time.time())} downloading \
 all holdings"
         )
-
-    print("", full_name, "\n")
 
 print(
     f"{timediff(start_time, time.time())} downloading and then \
@@ -184,14 +204,14 @@ if os.path.exists(fPARN):
         os.path.exists(fPARN) and df_fPARN.columns[1] == "Valuation First Level"
     )
     if not test_fPARN:
-        send2trash.sendtotrash(fPARN)
+        send2trash(fPARN)
 
 # test that derivatives (fDE) downloaded
 if os.path.exists(fDE):
     df_fDE = pd.read_csv(fDE)
     test_fDE = os.path.exists(fDE) and df_fDE.columns[6] == "Effective Exposure"
     if not test_fDE:
-        send2trash.sendtotrash(fDE)
+        send2trash(fDE)
 
 print(f"\n Expected downloads for {rptDate.strftime('%A %d %B %Y')}:")
 print(

@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"github-enterprise.uri": "https://gitlab-pim.prescient.co.za",
+		"python-envs.pythonProjects": [
+			{
+				"path": "eagle_gen.py",
+				"envManager": "ms-python.python:venv",
+				"packageManager": "ms-python.python:pip"
+			}
+		]
+	}
+}

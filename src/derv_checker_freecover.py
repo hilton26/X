@@ -41,7 +41,7 @@ print(
 prior reporting date ..."
 )
 
-fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold, batches = parn_de()
 
 # check if the required files have been downloaded, else continue
 if not os.path.exists(fPARN) or not os.path.exists(fDE):

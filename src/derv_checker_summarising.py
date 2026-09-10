@@ -49,7 +49,7 @@ print(f" {timediff(start_time, time.time())} setting up paths", "\n")
 start_time = time.time()
 print("Getting the reporting date and names of completed derivative files ...")
 
-fPARN, fDE, funds, rptDate, summ_yn, dervthreshold = parn_de()
+fPARN, fDE, funds, rptDate, summ_yn, dervthreshold, batches = parn_de()
 
 # check if the required files have been downloaded, else continue
 if not os.path.exists(fPARN) or not os.path.exists(fDE):
@@ -396,7 +396,7 @@ fund{"s" if len(no_data["Entity ID"]) != 1 else ""}: \
 # convert date columns to datetime format
 date_cols = ["i Position Effective Date", "Maturity Date", "Next Coupon Date"]
 for date_col in date_cols:
-    wbH[date_col] = pd.to_datetime(wbH[date_col])
+    wbH[date_col] = pd.to_datetime(wbH[date_col], format="mixed", dayfirst=True)
 
 # convert holdings numerical columns to numbers
 num_cols = [
@@ -535,8 +535,8 @@ mandates and calculation sheets",
     start_time_format = time.time()
     for a_cell in tqdm(
         shtS["D2:V2"].expand("down"),
-        desc=f"Adding conditional formats for values < 0% or > 100% \
-of NAV; {len(funds_cmpl) * 19:,.0f} \
+        desc=f"Adding conditional formats for values <0% or >100% \
+of NAV: {len(funds_cmpl) * 19:,.0f} \
 = {len(funds_cmpl)} funds x 19 columns",
     ):
         if type(a_cell.value) in [float, int]:
@@ -551,8 +551,7 @@ of NAV; {len(funds_cmpl) * 19:,.0f} \
     print(
         " ",
         f" {timediff(start_time_format, time.time())} adding \
-conditional formats for values that \
-are negative or exceed 100% of NAV",
+conditional formats for values <0% or >100% of NAV",
     )
 
 if summ_yn != "No":

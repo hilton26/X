@@ -3,8 +3,6 @@
 
 # # Eagle Downloader
 
-# In[15]:
-
 
 # timekeeper function
 import datetime, time

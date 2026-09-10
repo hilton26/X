@@ -133,10 +133,6 @@ with issuers_1.ipynb as at {rptDate.strftime('%d %B %Y')}.\n  Funds not \
 classified ({len(funds_not_classified)}):\n  {none}"
 )
 
-
-# In[64]:
-
-
 # loop through each fund
 start_time_fund_loop = time.time()
 
@@ -357,18 +353,16 @@ for fund in tqdm(funds):
             ]["Current Exposure"].count()
         )  # other, non-MMF, ETFs
 
-        fras = min(
-            0,
-            hold[hold["Valuation First Level"] == "FORWARD RATE AGREEMENT"][
-                "Original Nominal"
-            ]
-            .fillna(0)
-            .dot(
-                hold[hold["Valuation First Level"] == "FORWARD RATE AGREEMENT"][
-                    r"Market Price /Yield"
-                ].fillna(0)
-            ),
-        )
+        fra_mask = hold["Valuation First Level"] == "FORWARD RATE AGREEMENT"
+        fra_nominal = pd.to_numeric(
+            hold.loc[fra_mask, "Original Nominal"].astype(str).str.replace(",", ""),
+            errors="coerce",
+        ).fillna(0)
+        fra_price = pd.to_numeric(
+            hold.loc[fra_mask, r"Market Price /Yield"].astype(str).str.replace(",", ""),
+            errors="coerce",
+        ).fillna(0)
+        fras = min(0, fra_nominal.dot(fra_price))
 
         ailf = (
             cash + mmfs + mmis + bonds + repo_gain + marg_jse + marg_otc

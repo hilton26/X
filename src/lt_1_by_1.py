@@ -1,4 +1,4 @@
-print("\n\n(1) setting input variables for testing the osprey() function")
+print("\n\n(1) setting input variables for testing the osprey() function\n")
 from datetime import datetime
 import re
 import pandas as pd
@@ -38,7 +38,7 @@ row_skip = (
     1  # initial row to skip before reading the first batch; will be updated in the loop
 )
 start = 1
-
+print(df)
 
 failed_batches = []
 for batch_number in tqdm(range(start, n), desc="Processing batches"):
@@ -81,17 +81,7 @@ for batch_number in tqdm(range(start, n), desc="Processing batches"):
 
     print(f"{len(df)} \n {to_date}\n{name}\n {new_file_name}\n {funds}")
 
-    # (1) present expected file name and whether it already exists in the Downloads folder, before downloading the report
-
-    new_file_name = (
-        f"{rpt_type.upper()} "
-        f"{name}({len(funds.split(','))}) "
-        f"{d_from.strftime('%d%b%Y')}"
-        f"{' to ' + d_to.strftime('%d%b%Y') if d_to != d_from else ''}"
-        f".{sfx}"
-    )
-
-    print(f"Expected file name: {new_file_name}")
+    print(f"Expected file name: {new_file_name}.{sfx}")
     # print(
     #     f"Expected file name: {rpt_type.upper()} "
     #     f"{name}({len(funds.split(','))}) "

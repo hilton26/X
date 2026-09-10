@@ -1,19 +1,22 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-print("\n\n#################################")
-print("#                               #")
-print("#        START r28_ib.py   X    #")
-print("#                               #")
-print("#################################\n\n")
+print("\n\n#######################################")
+print("#                                     #")
+print("#           START r28_ib.py   X       #")
+print("#                                     #")
+print("#######################################\n\n")
 
 import time
 from datetime import datetime
 import pandas as pd
 import os
+import sys
+import subprocess
 import openpyxl
 
-# import copy  # "AttributeError: Style objects are immutable and cannot be changed. Reassign the style with a copy"
+# import copy  # "AttributeError: Style objects are immutable
+# and cannot be changed. Reassign the style with a copy"
 from openpyxl.styles import (
     NamedStyle,
     Alignment,
@@ -22,7 +25,7 @@ from openpyxl.styles import (
 from openpyxl.styles.borders import Border, Side
 from openpyxl.cell import (
     Cell,
-)  # https://stackoverflow.com/questions/42215933/apply-wrap-text-to-all-cells-using-openpyxl
+)
 from tqdm import tqdm
 from utilities import timediff, item_row, prior_month_end
 from constants import (
@@ -34,6 +37,7 @@ from constants import (
     pthTest,
     pth_r28_lmts,
     pth_schib_tmpl,
+    r28_t2,
 )
 
 start_time0 = time.time()
@@ -63,12 +67,15 @@ def get_inputs():
 
     s = "s" if len(funds) != 1 else ""
     print(
-        f"Schedule IB report{s} as at {rptDate.strftime('%A %d %b %Y')} for {len(funds)} fund{s}:\n {(', ').join(fund_list)}\n"
+        f"Schedule IB report{s} as at {rptDate.strftime('%A %d %b %Y')} \
+for {len(funds)} fund{s}:\n {(', ').join(fund_list)}\n"
     )
-    # print('\n', f'{timediff(start_time, time.time())}: getting the Schedule IB report inputs with pd.read_excel() completed')
+    # print('\n', f'{timediff(start_time, time.time())}: getting
+    # the Schedule IB report inputs with pd.read_excel() completed')
 
 
-# function to get Reg 28 into a dataframe from which values will be looked up for the schedule
+# function to get Reg 28 into a dataframe from which
+# values will be looked up for the schedule
 def r28_df():
     start_time = time.time()
     global rgAll, rg, r28, ctgs
@@ -84,8 +91,6 @@ def r28_df():
     syth = len(rg[rg["Investment Type"] == "SYTH"])
 
     # sort reg28 by classification and issuer
-    # https://stackoverflow.com/questions/33165734/update-index-after-sorting-data-frame
-    # https://stackoverflow.com/questions/17141558/how-to-sort-a-pandas-dataframe-by-two-or-more-columns
     rg = rg.sort_values(
         by=["Reg 28 Classification", "Issuer", "Primary Asset ID"],
         ascending=[True, False, False],
@@ -107,7 +112,6 @@ def r28_df():
     )
 
     # add a combined instrument name column (ID + Description)
-    # https://stackoverflow.com/questions/19377969/combine-two-columns-of-text-in-pandas-dataframe
     r28["Instr"] = r28["Primary Asset ID"] + " - " + r28["i Issue Name"]
 
     # get the unique item categories in Reg 28
@@ -125,19 +129,23 @@ def r28_df():
     }
     r28 = r28.rename(columns=headings)
 
-    # print('\n', f'{fund} on {rptDate.strftime("%A %d %b %Y")}: {syth} contra{"s" if syth > 1 else ""} removed, ',
-    # f'{len(ctgs)} sub-categor{"y" if len(ctgs) == 1 else "ies"}:', '\n', (', ').join(ctgs), '\n')
+    # print('\n', f'{fund} on {rptDate.strftime("%A %d %b %Y")}:
+    # {syth} contra{"s" if syth > 1 else ""} removed, ',
+    # f'{len(ctgs)} sub-categor{"y" if len(ctgs) == 1 else "ies"}:',
+    # '\n', (', ').join(ctgs), '\n')
 
-    # print(f'{timediff(start_time, time.time())}: setting up dataframe of values for the schedule completed: ')
+    # print(f'{timediff(start_time, time.time())}: setting
+    # up dataframe of values for the schedule completed: ')
 
 
 # constants_2 - static for formatting security values and percentages
 
-nmbr = '#,##0.00 ;-#,##0.00 ;"- "'  # https://support.microsoft.com/en-us/office/number-format-codes-5026bbd6-04bc-48cd-bf33-80f18b4eae68
+nmbr = '#,##0.00 ;-#,##0.00 ;"- "'
 fnt = "Calibri"
 sz = 12
 
-# cell styles for column 'C', 'Security Description', to be used in the workbook
+# cell styles for column 'C', 'Security Description',
+# to be used in the workbook
 cell_style_K = NamedStyle(
     name="cell_style_K"
 )  # alignment style for column 'C' of the schedule
@@ -197,11 +205,12 @@ def open_wb():
     # add cell styles to be applied in the workbook
     wb.add_named_style(
         cell_style_K
-    )  # add cell styles for column 'C', 'Security Description', to be used in the workbook
-    # using 'cell_style_C' yields the error "ValueError: Style cell_style_C exists already"
-    wb.add_named_style(
-        cell_style_D
-    )  # add cell styles for column 'D', 'Limit (%)', to be used in the workbook
+    )  # add cell styles for column 'C', 'Security Description',
+    # to be used in the workbook
+    # using 'cell_style_C' yields the error "ValueError:
+    # Style cell_style_C exists already"
+    wb.add_named_style(cell_style_D)  # add cell styles for column 'D', 'Limit (%)',
+    # to be used in the workbook
     wb.add_named_style(
         cell_style_heads
     )  # add cell styles for the 'Fair Value' and the 'Limit (%)' headings
@@ -209,7 +218,8 @@ def open_wb():
         cell_style_numbers
     )  # add cell styles for the numbers in columns 'E', and 'F'
 
-    # print(f'{timediff(start_time, time.time())}: opening the SchIB template as a workbook and assigning its cell styles completed')
+    # print(f'{timediff(start_time, time.time())}: opening the
+    # SchIB template as a workbook and assigning its cell styles completed')
 
 
 # function to copy the schedule template and then update static values on it
@@ -223,7 +233,8 @@ def paste_nav():
     sh["E" + str(item_row(sh, "TOTAL", 7))] = r28["EMV"].sum()  # TOTAL NAV
     sh["F" + str(item_row(sh, "TOTAL", 7))] = 100  # TOTAL NAV
 
-    # print(f'{timediff(start_time, time.time())}: updating static values on the schedule completed')
+    # print(f'{timediff(start_time, time.time())}:
+    # updating static values on the schedule completed')
 
 
 # populate instruments for the 3(f), 3(g), 3(h), and 3(i) subtotals
@@ -250,7 +261,8 @@ def fghi():  # 3(f), 3(g), 3(h), and 3(i) subtotals and their constituents and r
         )  # delete the '3(i) contra' line item, but only one row
 
     # sum and populate tthe 3(f,g,h,i) sub-totals
-    # iterating through a nested dictionary - https://www.programiz.com/python-programming/nested-dictionary
+    # iterating through a nested dictionary -
+    # https://www.programiz.com/python-programming/nested-dictionary
     spacer2 = 1
     for (
         supercat,
@@ -637,8 +649,12 @@ time for {len(funds) - len(noReg28)} \
 fund{'' if len(funds) - len(noReg28) == 1 else 's'}"
 )
 
-print("\n\n#################################")
-print("#                               #")
-print("#         END r28_ib.py   X     #")
-print("#                               #")
-print("#################################\n\n")
+print("\nStarting r28_t2.py\n")
+subprocess.run([sys.executable, r28_t2])
+
+
+print("\n\n#######################################")
+print("#                                     #")
+print("#            END r28_ib.py   X        #")
+print("#                                     #")
+print("#######################################\n\n")

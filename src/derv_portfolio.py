@@ -50,6 +50,16 @@ print(
 {rptDate.strftime('%a %d %b %Y')}:\n {(', ').join(funds.tolist())}\n"
 )
 
+# close out_path in any running Excel instance (e.g. the user has a prior
+# day's version of this fund's file open) so saving over it doesn't fail
+def close_if_open(path):
+    target = os.path.normcase(os.path.abspath(path))
+    for running_app in xw.apps:
+        for bk in list(running_app.books):
+            if os.path.normcase(os.path.abspath(bk.fullname)) == target:
+                bk.close()
+
+
 # single hidden Excel instance reused for every fund, in manual calc mode, to
 # avoid "Excel ran out of resources while attempting to calculate" errors caused
 # by the formula-heavy template auto-recalculating on every write
@@ -66,14 +76,15 @@ try:
         wb = app.books.open(derv_check_tmpl)
         ws = wb.sheets["Data"]
         ws.clear_contents()
-        ws["A1"].value = holdings.columns.tolist()
-        ws["A2"].value = holdings.values.tolist()
+        ws["A1"].value = holdings.columns.tolist() # paste headings
+        ws["A2"].value = holdings.values.tolist() # paste values
 
         wb.app.calculate()  # one deliberate full recalculation, not one per paste
 
         out_path = os.path.join(
             pthEXPORTS, f"{rptDate.strftime('%Y%m%d')}_{fund}_derv_check.xlsx"
         )
+        close_if_open(out_path)
         wb.save(out_path)
         wb.close()
 

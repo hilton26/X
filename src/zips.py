@@ -46,12 +46,15 @@ from utilities import (
     property,
 )
 
-# import selenium for picking up the Jxxx indices and bond indices from Prime Portal
+# import selenium for picking up the Jxxx
+# indices and bond indices from Prime Portal
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 # function to return matching MSCI index codes
 def msci(txt):
@@ -60,20 +63,21 @@ def msci(txt):
             return f"{key.upper()}"
     return "---xxx---"
 
-
 # (1) create latest month reporting folders
 
-# take reporting date as last working day of prior month end from today's date
+# take reporting date as last working day
+# of prior month end from today's date
 rptDate = last_working_day(prior_month_end(datetime.today()))
 print(rptDate)
 
-# create the month end reporting folders if they don't yet exist - https://flexiple.com/python/python-make-directory
+# create the month end reporting folders if they don't yet
+# exist - https://flexiple.com/python/python-make-directory
 
 start_time = time.time()
-print(f"Creating the month-end reporting folders, if they don't yet exist\n")
+print(f"Creating the month-end reporting \
+folders, if they don't yet exist\n")
 
-
-# create the month-end_17 reporting folder if it doesnt yet exist
+# create the month-end_17 reporting folder if it doesn't yet exist
 pth = os.path.join(pth_m_reports, rptDate.strftime("%Y"), rptDate.strftime("%Y %m"))
 if not os.path.exists(pth):
     os.makedirs(pth)
@@ -100,7 +104,8 @@ start_time = time.time()
 print(f"Getting zipped MSCI data\n")
 
 m = os.listdir(msci_zips)  # list of files in the Zips directory
-# k = max([x[-8:-4] + x[-12:-10] + x[-10:-8] for x in m if x.endswith('.zip')]) # sub-list of files ending in ".zip"
+# k = max([x[-8:-4] + x[-12:-10] + x[-10:-8] for x in m
+# if x.endswith('.zip')]) # sub-list of files ending in ".zip"
 # zip_file     = f'PPS_MSCI_indexes_{k[4:6] + k[-2:] + k[0:4]}.zip'
 # TUE 4 NOV 2025: AMEND TO LOOK FOR \d{8}.zip
 k = max(
@@ -166,11 +171,11 @@ df.drop(1, inplace=True)
 # reset the index
 df.reset_index(level=None, drop=True, inplace=True)
 
-# make a unique, separate copy, df_MSCI, of the just 
-# unzipped df so that modifications to the copy will not affect the original df
+# make a unique, separate copy, df_MSCI, of the just unzipped df
+# so that modifications to the copy will not affect the original df
 df_MSCI = df.copy(
     deep=True
-)  # deep=True is the default and can be omitted, changes to the 
+)  # deep=True is the default and can be omitted, changes to the
 # copy do not affect the original
 
 # rename the last column which contains "\r\n"
@@ -230,7 +235,8 @@ print(
 data for {date_MSCI.strftime('%a %d %b %Y')}"
 )
 
-# (3) Get JSE data and combine with MSCI data and prior month-end BX data, then save as a file
+# (3) Get JSE data and combine with MSCI data and
+# prior month-end BX data, then save as a file
 
 # define MSCI and JSE index heading names
 bx_heads = [
@@ -298,13 +304,10 @@ JSE_new_cols = [
 start_time = time.time()
 print("Dataframing the unique MSCI constituents")
 
-# https://stackoverflow.com/questions/43184491/df-unique-on-whole-dataframe-based-on-a-column
-# df_MSCI      = df_MSCI.drop_duplicates(subset = ['isin'])
-# date_dfz = datetime.strptime(dfz['end date'].iloc[0], "%Y%m%d").date()
-
 # rename MSCI columns and add new columns to match BX
 
-df_MSCI = df_MSCI.rename(columns=msci_heads_r)  # rename MSCI columns
+# rename MSCI columns
+df_MSCI = df_MSCI.rename(columns=msci_heads_r)
 
 for col in msci_new_cols:  # add new, empty columns
     df_MSCI[col] = np.nan
@@ -320,7 +323,8 @@ print(f"{timediff(start_time, time.time())} dataframing the unique MSCI constitu
 start_time = time.time()
 print("Populating the empty MSCI dataframe columns")
 
-# convert float64 columns to string, else the .loc assignment below will fail
+# convert float64 columns to string, else
+# the .loc assignment below will fail
 cols_to_str = ["Bloomberg Ticker", "GICS Code", "Status", "Exchange"]
 for col in cols_to_str:
     df_MSCI[col] = df_MSCI[col].astype(str)
@@ -356,10 +360,10 @@ df = pd.read_excel(pth_struct, sheet_name="dervs", usecols=[1]).dropna()
 indices = list(df.iloc[:, 0])  # all the rows, zeroth column
 
 # list only the JSE indices
-pattern = "J\d{3}"  # e.g., 'J123'
+pattern = r"J\d{3}"  # e.g., 'J123'
 indices = [s for s in indices if re.search(pattern, str(s).upper())]
 
-print(f"  {(', ').join(indices)}")
+print(f"\n  {(', ').join(indices)}\n")
 
 links = []  # empty list to bunch each link into a list
 df_J = pd.DataFrame()  # empty dataframe to hold Jxxx indices
@@ -367,7 +371,9 @@ for index in tqdm(indices):
     # pull the index into the Downloads folder
     link = jse_data + rf"/{index}/{d}/{d}/True/False"
     links.append(link)
-    driver = webdriver.Chrome()  # click the link using Chrome, or Edge (crashes), or Firefox (takes long to close), etc.
+    # click the link using Chrome, or Edge (crashes),
+    # or Firefox (takes long to close), etc.
+    driver = webdriver.Chrome()
     driver.get(link)
     time.sleep(10)
     driver.quit()
@@ -376,9 +382,6 @@ for index in tqdm(indices):
     fl = latest_file_in_folder(pth_dl)
     df = pd.read_csv(fl)
     df_J = pd.concat([df_J, df])
-
-    # print result
-    # print('' , f'{index} downloaded as {fl}')
 
 print(
     f"\n{timediff(start_time, time.time())} downloading and \
@@ -403,7 +406,8 @@ df_J["Date of Upload"] = pd.to_datetime(
 date_J = df_J["Date of Upload"].iloc[0].date()
 print(f" JSE indices date: {date_J}", "\n")
 
-# convert df_J column "GICS Code" to string, else the .loc assignment below will fail
+# convert df_J column "GICS Code" to string,
+# else the .loc assignment below will fail
 df_J["GICS Code"] = df_J["GICS Code"].astype(str)
 
 # populate the JSE dataframe columns
@@ -456,7 +460,8 @@ print(
 constituents from prior month:\n   {df_bsk['Index'].unique()[0]}"
 )
 
-# combine the unique constituents of the MSCI, JSE, and prior BX dataframes
+# combine the unique constituents of
+# the MSCI, JSE, and prior BX dataframes
 start_time = time.time()
 print("Combining the MSCI, JSE, and prior BX dataframes")
 MSCI_unique = df_MSCI.drop_duplicates(subset=["ISIN"])
@@ -476,30 +481,25 @@ MSCI, JSE, and prior BX dataframes"
 )
 
 # # TEST
-# # confirm an old ticker is still included in the current BX file
+# # confirm an old ticker is still included in the
+# current BX file
 # df_BX[df_BX["PIM Ticker"] == "SEA SJ"]
 
-# (4) Get bond data from Prime Portal, then save the indices and bond data to a file
+# (4) Get bond data from Prime Portal, then
+# save the indices and bond data to a file
 
 # get bond data
 start_time = time.time()
 print("Downloading and dataframing bond data from Prime Portal")
 
 try:
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.common.exceptions import NoSuchElementException, TimeoutException
-
     # Set up the WebDriver (e.g., Chrome)
     driver = webdriver.Chrome()
     driver.get(credit_meta)
 
     # open the Bond Mapping page on Prime Portal
-    # <a class="f-nav-link active" href="#bond-mapping" data-bs-toggle="tab" data-bs-target="#nav-3">Bond Mapping</a>
+    # <a class="f-nav-link active" href="#bond-mapping"
+    # data-bs-toggle="tab" data-bs-target="#nav-3">Bond Mapping</a>
     link_element_css_clue = 'a[class="f-nav-link"][href="#bond-mapping"]'
     link_element = (
         WebDriverWait(driver, 10)
@@ -508,7 +508,9 @@ try:
     )
 
     # click the CSV link on the Bond Mapping page
-    # <button class="btn btn-secondary buttons-csv buttons-html5" tabindex="0" aria-controls="bond_mapping" type="button"><span>CSV</span></button>
+    # <button class="btn btn-secondary buttons-csv
+    # buttons-html5" tabindex="0" aria-controls="bond_mapping"
+    # type="button"><span>CSV</span></button>
     time.sleep(10)
     csv_element_css_clue = 'button[class="btn btn-secondary buttons-csv buttons-html5"][aria-controls="bond_mapping"]'
     csv_element = WebDriverWait(driver, 10).until(
@@ -518,7 +520,6 @@ try:
 
 except NoSuchElementException:
     print("Element not found. Handling NoSuchElementException.")
-    # You can add actions here, like logging the error, taking a screenshot, or retrying
 except TimeoutException:
     print("Operation timed out. Handling TimeoutException.")
     # Specific handling for timeout issues
@@ -527,13 +528,15 @@ except EmptyDataError as d:
     # Catch for empty data error
 except ParserError as p:
     print(f"Error tokenising data: {p}")
-    # ParserError: Error tokenizing data. C error: EOF inside string starting at row 4324
+    # ParserError: Error tokenizing data. C error:
+    # EOF inside string starting at row 4324
 except Exception as e:
     print(f"An unexpected error occurred: {e}")
     # Catch-all for other potential exceptions
 
 finally:
-    # This block will always execute, regardless of whether an exception occurred
+    # This block will always execute, regardless
+    # of whether an exception occurred
     driver.quit()  # close the browser
 
 # dataframe the latest file in the Downloads folder
@@ -552,7 +555,8 @@ print(
     f"\n{timediff(start_time, time.time())} downloading and dataframing bond data from Prime Portal"
 )
 
-# (5) Write the indices and bond dataframes to a workbook for review, then copy as the newest 'BX.xlsx' file
+# (5) Write the indices and bond dataframes to a workbook
+# for review, then copy as the newest 'BX.xlsx' file
 
 # write the indices and bond dataframes to a workbook
 start_time = time.time()
@@ -591,11 +595,13 @@ writer.close
 shutil.copyfile(fln_BX, os.path.join(pth_BX, "BX.xlsx"))
 
 print(
-    f"{timediff(start_time, time.time())} writing the new BX dataframe to a file for {rptDate.date()}\n"
+    f"{timediff(start_time, time.time())} writing the \
+new BX dataframe to a file for {rptDate.date()}\n"
 )
 print(" ", fln_BX)
 print(
-    f"\n{timediff(start_time_zip, time.time())} roundtrip time to collect index and bond data for {rptDate.strftime('%a %d %b %Y')}"
+    f"\n{timediff(start_time_zip, time.time())} roundtrip time to \
+collect index and bond data for {rptDate.strftime('%a %d %b %Y')}"
 )
 
 # (6) Create the latest month reporting folders

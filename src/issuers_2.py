@@ -818,8 +818,10 @@ print(
     f" {timediff(start_time, time.time())} defining the Reg 28 classification function\n"
 )
 
-# function that classifies securities in terms of Rergulation 30 based on the values of other columns
-# Python: Check if String Contains Substring https://stackabuse.com/python-check-if-string-contains-substring/
+# function that classifies securities in terms of
+# Rergulation 30 based on the values of other columns
+# Python: Check if String Contains Substring
+# https://stackabuse.com/python-check-if-string-contains-substring/
 
 start_time = time.time()
 print("Defining the Reg 30 classification function ...")
@@ -968,11 +970,21 @@ def classify_Reg30(row):
         return "2(a)(x)"
 
     # 2(a)(xi) Debt issued by SARB-registered bank with DI900 >= R5bn
-    elif row["bank"] == "s" and pd.isna(row["repo"]) and row["DI900"] >= 5:
+    elif (
+        row["bank"] == "s"
+        and pd.isna(row["repo"])
+        and row["DI900"] >= 5
+        and row["Investment Type"] != "EQ"
+    ):
         return "2(a)(xi)"
 
     # 2(a)(xii) Debt issued by SARB-registered bank with DI900 >= 0.1bn
-    elif row["bank"] == "s" and pd.isna(row["repo"]) and row["DI900"] >= 0.1:
+    elif (
+        row["bank"] == "s"
+        and pd.isna(row["repo"])
+        and row["DI900"] >= 0.1
+        and row["Investment Type"] != "EQ"
+    ):
         return "2(a)(xii)"
 
     # 2(a)(xiii) Corporate debt listed on BESA and included in OTHI or ALBI

@@ -19,21 +19,22 @@ def pgf_check():
 
     # get report date
     df = pd.read_excel(pthPy, sheet_name="arc", usecols="G:I")
-    k = df.iloc[1, 2]
     rptDate = (
-        k
-        if isinstance(k, datetime) and not pd.isna(k)
+        df.iloc[1, 2].date()
+        if isinstance(df.iloc[1, 2], datetime) and not pd.isna(df.iloc[1, 2])
         else prior_working_day(datetime.today())
     )  # prior working day or report date override
 
     # construct file names
     UTs_name = os.path.join(
         pth_dl,
-        f"UTPS PGF_UT_prices({len(df['pgf: UT prices'].dropna())}) {rptDate.strftime('%d%b%Y')}.csv",
+        f"UTPS PGF_UT_Prices({len(df['pgf: UT prices'].dropna())}) \
+{rptDate.strftime('%d%b%Y')}.csv",
     )
     NAV_name = os.path.join(
         pth_dl,
-        f"PARN PGF_Holdings({len(df['pgf: PAR-N'].dropna())}) {rptDate.strftime('%d%b%Y')}.csv",
+        f"PARN PGF_Holdings({len(df['pgf: PAR-N'].dropna())}) \
+{rptDate.strftime('%d%b%Y')}.csv",
     )
 
     print(
@@ -44,20 +45,23 @@ def pgf_check():
         NAV_name,
     )
 
-    filename = pthHdg + rf"\{rptDate.strftime('%Y%m%d')} PGF Share Class Hedges.xlsx"
+    filename = (
+        pthHdg
+        + rf"\{rptDate.strftime('%Y%m%d')} PGF \
+Share Class Hedges.xlsx"
+    )
     if os.path.isfile(filename):
         print(
-            f"{datetime.now().strftime('%Hh%M:%Ss %a %d %b %Y')}: {filename.removeprefix(pthHdg)} \
-was completed at {time.ctime(os.path.getmtime(filename))}"
+            f"{datetime.now().strftime('%Hh%M:%Ss %a %d %b %Y')}: \
+{filename.removeprefix(pthHdg)} was completed \
+at {time.ctime(os.path.getmtime(filename))}"
         )
-        # https://www.geeksforgeeks.org/python-os-path-getmtime-method/
         pass
     else:
         try:
             # run the hedge checker
             subprocess.run([sys.executable, pg_do])
             if os.path.isfile(UTs_name) and os.path.isfile(NAV_name):
-                # FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\hilton.netta\\Downloads\\UTPS PGF_UT_prices(7) 05Mar2025.csv'
                 subprocess.run([sys.executable, pg_co])
 
                 if os.path.isfile(NAV_name):
@@ -74,6 +78,5 @@ was completed at {time.ctime(os.path.getmtime(filename))}"
 time to complete the pgf report"
         )
 
-
-# execute the report function
-pgf_check()
+if __name__ == "__main__":
+    pgf_check()
